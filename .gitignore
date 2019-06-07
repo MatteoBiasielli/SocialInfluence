@@ -1,0 +1,16 @@
+# IntelliJ project files
+.idea
+.venv
+TFCPU
+.TFCPU
+__pycache__
+fault_injected_samples
+sharp_fault_injection
+dataset
+dataset2
+toclean
+tempData/t10k-images-idx3-ubyte.gz
+tempData/t10k-labels-idx1-ubyte.gz
+tempData/train-images-idx3-ubyte.gz
+tempData/train-labels-idx1-ubyte.gz
+*.mat
