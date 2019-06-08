@@ -17,6 +17,7 @@ class Node:
         self.inactive = False
         self.adjacency_list = []
         self.adjacency_weights = []
+        self.adjacency_live = []
         self.degree = 0
         self.id = Node.count_id
         Node.count_id += 1
@@ -24,7 +25,48 @@ class Node:
     def attach(self, node, prob=1):
         self.adjacency_list.append(node)
         self.adjacency_weights.append(prob)
+        self.adjacency_live.append(0)
         self.degree += 1
+
+    def isSeed(self):
+        return self.seed
+
+    def isActive(self):
+        return self.active
+
+    def isInactive(self):
+        return self.inactive
+
+    def isSuceptible(self):
+        return self.suceptible
+
+    def setActive(self):
+
+        self.active = True
+        self.suceptible = False
+        self.inactive = False
+
+    def setInactive(self):
+        self.active = False
+        self.suceptible = False
+        self.inactive = True
+
+    def setSuceptible(self):
+        self.active = False
+        self.suceptible = True
+        self.inactive = False
+
+    def setSeed(self):
+        self.seed = True
+
+    def resetNode(self):
+        if not self.isSeed():
+            self.suceptible = True
+        self.inactive = False
+        self.active = False
+
+    def removeSeed(self):
+        self.seed = False
 
     def sort_probabilities(self, seed, adj_matrix, common_args):
         for i in range(self.degree):
@@ -152,6 +194,73 @@ class GraphScaleFree:
         gra.assign_nodes_costs()  # must do this or costs will all be 0
         return gra
 
+    def activate_live_edges(self):
+        for node in self.nodes:
+            for i in range(len(node.adjacency_list)):
+                if np.random.binomial(1, node.adjacency_weights[i]) == 1:
+                    node.adjacency_live[i] = 1
+
+    def deactivate_live_edges(self):
+        for node in self.nodes:
+            for i in range(len(node.adjacency_live)):
+                if node.adjacency_live[i] == 1:
+                    node.adjacency_live[i] = 0
+
+    def prepare_for_cascade(self):
+        for node in self.nodes:
+            node.setSuceptible()
+
+    def get_inactive_nodes_ids(self):
+        result = []
+        for node in self.nodes:
+            if node.isInactive():
+                result.append(node.id)
+        return result
+
+    def propagate_cascade(self):
+        self.prepare_for_cascade()
+        just_activated_nodes = []
+        propagation = True
+        # Starting from seeds, it activates all the node corresponding to live edges
+        for node in self.nodes:
+            if node.isSeed():
+                for i in range(len(node.adjacency_list)):
+                    if (node.adjacency_list[i].isSuceptible()) & (not node.adjacency_list[i].isSeed()) & (
+                            node.adjacency_live[i] == 1):
+                        node.adjacency_list[i].setActive()
+
+        # For all the live edges, spreads the activation to all the neighbours
+        while propagation:
+            propagation = False
+
+            for node in self.nodes:
+                if (node.isActive()) & (not node.isSeed()) & (node not in just_activated_nodes):
+                    propagation = True
+                    for i in range(len(node.adjacency_list)):
+                        if (node.adjacency_list[i].isSuceptible()) & (not node.adjacency_list[i].isSeed()) & (
+                                node.adjacency_live[i] == 1):
+                            node.adjacency_list[i].setActive()
+                            just_activated_nodes.append(node.adjacency_list[i])
+                    node.setInactive()
+
+            just_activated_nodes.clear()
+
+    def monte_carlo_sampling(self, number_of_iterations, seeds):
+        result = np.zeros(len(self.nodes))
+        for seed in seeds:
+            self.nodes[seed].setSeed()
+
+        for i in range(number_of_iterations):
+            self.activate_live_edges()
+            self.propagate_cascade()
+            tmp = self.get_inactive_nodes_ids()
+            for id in tmp:
+                result[id] += 1
+            self.deactivate_live_edges()
+        result = (1 / number_of_iterations) * result
+
+        return result
+
 
 if __name__ == '__main__':
     # HOW TO CREATE THE GRAPH WITH 100 NODES WE WILL USE
@@ -160,6 +269,11 @@ if __name__ == '__main__':
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
     gr.to_csv(name="graph100")  # in case you want to save it
+
+    # Select one or more seeds for the m.c. sampling
+    seeds = [35, 45]
+    probabilities = gr.monte_carlo_sampling(1000, seeds)
+    print(probabilities)
 
     # HOW TO CREATE THE GRAPH WITH 1000 NODES WE WILL USE
     gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
