@@ -11,6 +11,7 @@ class Node:
     def __init__(self):
         self.attrs = None
         self.seed = False
+        self.cost = 0
         self.active = False
         self.suceptible = False
         self.inactive = False
@@ -39,9 +40,11 @@ class Node:
 def sigmoid(x, scale=0.2):
     return 1 / (1 + np.exp(-x * scale))
 
+
 class GraphScaleFree:
 
     def __init__(self, nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234)):
+        Node.count_id = 0
         self.adj_matr = np.zeros([nodes, nodes], dtype=np.uint8)
         self.common_args = np.zeros([nodes, nodes], dtype=np.float16)
         self.num_nodes = 0
@@ -87,12 +90,14 @@ class GraphScaleFree:
         for n in self.nodes:
             n.sort_probabilities(self.randstate, self.adj_matr, self.common_args)
 
-    def plot_degrees(self):
+    def plot_degrees(self, name=""):
         degrees = []
         for node in self.nodes:
             degrees.append(node.degree)
 
-        seaborn.distplot(degrees)
+        ax = seaborn.distplot(degrees, kde=None)
+        ax.set_title("Degrees Distribution " + name)
+        ax.set(xlabel="Degree")
         mplt.show()
 
     def to_csv(self, name="test", dir="../data/saved_graphs/"):
@@ -112,14 +117,42 @@ class GraphScaleFree:
                            str(node.adjacency_weights[i]) + "\n")
         file.close()
 
+    def assign_nodes_costs(self):
+        maxdeg = np.max([n.degree for n in self.nodes])
+        for n in self.nodes:
+            n.cost = 10 + (n.degree ** (2 - 0.5*n.degree/maxdeg)) * np.mean(n.adjacency_weights)
 
+    def print_costs_degrees(self):
+        degrees = []
+        costs = []
+        for n in self.nodes:
+            degrees.append(n.degree)
+            costs.append(n.cost)
+        print(degrees)
+        print(costs, sum(costs), sum(list(reversed(sorted(costs)))[:int(0.1*len(costs))]))
 
 
 if __name__ == '__main__':
-    gr = GraphScaleFree(nodes=10000, n_init_nodes=3, n_conn_per_node=2)
-    gr.plot_degrees()
-    gr.sort_probabilities()
-    gr.to_csv(name="test2")
+    # HOW TO CREATE THE GRAPH WITH 100 NODES WE WILL USE
+    gr = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+    gr.plot_degrees(name="- Scale-Free 100 Nodes")  # in case you want to plot the distribution of the degrees
+    gr.sort_probabilities()  # must do this or probabilities will all be 1
+    gr.assign_nodes_costs()  # must do this or costs will all be 0
+    gr.to_csv(name="graph100")  # in case you want to save it
+
+    # HOW TO CREATE THE GRAPH WITH 1000 NODES WE WILL USE
+    gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+    gr.plot_degrees(name="- Scale-Free 1000 Nodes")  # in case you want to plot the distribution of the degrees
+    gr.sort_probabilities()  # must do this or probabilities will all be 1
+    gr.assign_nodes_costs()  # must do this or costs will all be 0
+    gr.to_csv(name="graph1000")  # in case you want to save it
+
+    # HOW TO CREATE THE GRAPH WITH 10000 NODES WE WILL USE
+    gr = GraphScaleFree(nodes=10000, n_init_nodes=5, n_conn_per_node=10, randomstate=np.random.RandomState(1234))
+    gr.plot_degrees(name="- Scale-Free 10000 Nodes")  # in case you want to plot the distribution of the degrees
+    gr.sort_probabilities()  # must do this or probabilities will all be 1
+    gr.assign_nodes_costs()  # must do this or costs will all be 0
+    gr.to_csv(name="graph10000")  # in case you want to save it
 
 
 
