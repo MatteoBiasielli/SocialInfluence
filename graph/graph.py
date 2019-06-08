@@ -257,6 +257,10 @@ class GraphScaleFree:
             for id in tmp:
                 result[id] += 1
             self.deactivate_live_edges()
+
+        for node in self.nodes:
+            if node.isSeed():
+                result[node.id] += number_of_iterations
         result = (1 / number_of_iterations) * result
 
         return result
