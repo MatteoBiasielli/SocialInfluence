@@ -131,6 +131,27 @@ class GraphScaleFree:
         print(degrees)
         print(costs, sum(costs), sum(list(reversed(sorted(costs)))[:int(0.1*len(costs))]))
 
+    @staticmethod
+    def create_graph100():
+        gra = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+        gra.sort_probabilities()  # must do this or probabilities will all be 1
+        gra.assign_nodes_costs()  # must do this or costs will all be 0
+        return gra
+
+    @staticmethod
+    def create_graph1000():
+        gra = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+        gra.sort_probabilities()  # must do this or probabilities will all be 1
+        gra.assign_nodes_costs()  # must do this or costs will all be 0
+        return gra
+
+    @staticmethod
+    def create_graph10000():
+        gra = GraphScaleFree(nodes=10000, n_init_nodes=5, n_conn_per_node=10, randomstate=np.random.RandomState(1234))
+        gra.sort_probabilities()  # must do this or probabilities will all be 1
+        gra.assign_nodes_costs()  # must do this or costs will all be 0
+        return gra
+
 
 if __name__ == '__main__':
     # HOW TO CREATE THE GRAPH WITH 100 NODES WE WILL USE
