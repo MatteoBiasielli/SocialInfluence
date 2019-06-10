@@ -217,6 +217,17 @@ class GraphScaleFree:
                 result.append(node.id)
         return result
 
+    def compute_budget(self):
+        costs = []
+        for node in self.nodes:
+            costs.append(node.cost)
+        costs.sort(reverse=True)
+        num_of_considered_nodes = int(0.1 * len(self.nodes))
+        cg = 0
+        for i in range(0, num_of_considered_nodes):
+            cg += costs[i]
+        return np.power(0.4 * cg, 1 + 0.5 / np.log2(cg))
+
     def propagate_cascade(self):
         self.prepare_for_cascade()
         just_activated_nodes = []
@@ -261,8 +272,82 @@ class GraphScaleFree:
         for node in self.nodes:
             if node.isSeed():
                 result[node.id] += number_of_iterations
+                node.removeSeed()
         result = (1 / number_of_iterations) * result
 
+        return result
+
+    def find_best_seeds(self, initial_seeds, greedy_approach="standard", m_c_sampling_iterations=100, file_name=""):
+        self.assign_nodes_costs()
+        feasible_nodes = []
+        generated_increments = []
+        result = []
+        deletion_indexes = []
+
+        for i in range(len(self.nodes)):
+            feasible_nodes.append(self.nodes[i])
+            generated_increments.append(0)
+
+        budget = self.compute_budget()
+
+        for seed in initial_seeds:
+            result.append(self.nodes[seed].id)
+            budget -= self.nodes[seed].cost
+
+        for i in range(len(feasible_nodes)):
+            if (feasible_nodes[i].cost > budget or feasible_nodes[i].id in initial_seeds) and i not in deletion_indexes:
+                deletion_indexes.append(i)
+
+        deletion_indexes.sort(reverse=True)
+
+        for index in deletion_indexes:
+            feasible_nodes.__delitem__(index)
+            generated_increments.__delitem__(index)
+
+        deletion_indexes.clear()
+
+        while len(feasible_nodes) != 0:
+            print("queue nodes " + str(len(feasible_nodes)) + " - " + "remaining budget " + str(budget) + " ...")
+
+            for i in range(len(feasible_nodes)):
+
+                result.append(feasible_nodes[i].id)
+                m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
+                increment = sum(m_c_probabilities)
+                result.__delitem__(-1)
+
+                if greedy_approach == "standard":
+                    generated_increments[i] = increment - generated_increments[i]
+
+                elif greedy_approach == "cost_based":
+                    generated_increments[i] = (increment - generated_increments[i]) / feasible_nodes[i].cost
+
+            winner_index = np.argmax(generated_increments)
+            winner_node = feasible_nodes[int(winner_index)]
+            result.append(winner_node.id)
+            budget -= winner_node.cost
+
+            for i in range(len(feasible_nodes)):
+                if feasible_nodes[i].id == winner_node.id:
+                    deletion_indexes.append(i)
+                if feasible_nodes[i].cost > budget and i not in deletion_indexes:
+                    deletion_indexes.append(i)
+
+            deletion_indexes.sort(reverse=True)
+            for index in deletion_indexes:
+                feasible_nodes.__delitem__(index)
+                generated_increments.__delitem__(index)
+
+            deletion_indexes.clear()
+
+        result.sort()
+
+        if file_name:
+            file = open(file_name + ".csv", "w")
+            file.write(str(result[0]))
+            for i in range(1, len(result)):
+                file.write("," + str(result[i]))
+            file.close()
         return result
 
 
@@ -274,10 +359,18 @@ if __name__ == '__main__':
     gr.assign_nodes_costs()  # must do this or costs will all be 0
     gr.to_csv(name="graph100")  # in case you want to save it
 
-    # Select one or more seeds for the m.c. sampling
-    seeds = [35, 45]
-    probabilities = gr.monte_carlo_sampling(1000, seeds)
-    print(probabilities)
+    seeds = []
+    greedy_approach = "standard"
+    m_c_sampling_iterations = 100
+    file_name = ""
+    # initial_seeds: the nodes, if any, that we have already bought as seeds, if the algorithm start from zero,
+    # leave an empty list (default = empty list)
+    # greedy_approach: "standard" as described in the slides, "cost_based" the increment is divided by the cost of the
+    # node that generates the increment (default = "standard)
+    # file_name: if not empty, creates and writes the result in a file called "file_name.csv" (default = empty)
+    # returns: an ordered list of node ids corresponding to the best seed set found
+    print(gr.find_best_seeds(initial_seeds=seeds, greedy_approach=greedy_approach,
+                             m_c_sampling_iterations=m_c_sampling_iterations, file_name=file_name))
 
     # HOW TO CREATE THE GRAPH WITH 1000 NODES WE WILL USE
     gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
