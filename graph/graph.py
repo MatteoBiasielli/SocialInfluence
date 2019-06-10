@@ -294,6 +294,11 @@ class GraphScaleFree:
             result.append(self.nodes[seed].id)
             budget -= self.nodes[seed].cost
 
+        if budget < 0:
+            print("The initial seeds exceed the available budget (" + str(self.compute_budget()) +
+                  ". Try again with a cheaper initial seed set.")
+            return
+
         for i in range(len(feasible_nodes)):
             if (feasible_nodes[i].cost > budget or feasible_nodes[i].id in initial_seeds) and i not in deletion_indexes:
                 deletion_indexes.append(i)
