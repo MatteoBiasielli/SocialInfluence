@@ -85,7 +85,8 @@ def sigmoid(x, scale=0.2):
 
 class GraphScaleFree:
 
-    def __init__(self, nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234)):
+    def __init__(self, nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234),
+                 max_n_neighbors=None):
         Node.count_id = 0
         self.adj_matr = np.zeros([nodes, nodes], dtype=np.uint8)
         self.common_args = np.zeros([nodes, nodes], dtype=np.float16)
@@ -102,24 +103,26 @@ class GraphScaleFree:
             self.num_nodes += 1
 
         while self.num_nodes < nodes:
-            random_numbers = randomstate.randint(low=0, high=self.tot_degree, size=n_conn_per_node)
+
             attached = []
             newnode = Node()
-
-            for n in random_numbers:
-                acc = 0
-                for node in self.nodes:
-                    acc += node.degree
-                    if n < acc and node not in attached:
-                        attached.append(node)
-                        node.attach(newnode)
-                        newnode.attach(node)
-                        self.adj_matr[node.id][newnode.id] = 1
-                        self.adj_matr[newnode.id][node.id] = 1
-                        self.common_args[newnode.id][node.id] = randomstate.rand()
-                        self.common_args[node.id][newnode.id] = self.common_args[newnode.id][node.id]
-                        self.tot_degree += 2
-                        break
+            while not attached:
+                random_numbers = randomstate.randint(low=0, high=self.tot_degree, size=n_conn_per_node)
+                for n in random_numbers:
+                    acc = 0
+                    for node in self.nodes:
+                        acc += node.degree
+                        if n < acc and node not in attached and \
+                                (max_n_neighbors is None or len(node.adjacency_list) < max_n_neighbors):
+                            attached.append(node)
+                            node.attach(newnode)
+                            newnode.attach(node)
+                            self.adj_matr[node.id][newnode.id] = 1
+                            self.adj_matr[newnode.id][node.id] = 1
+                            self.common_args[newnode.id][node.id] = randomstate.rand()
+                            self.common_args[node.id][newnode.id] = self.common_args[newnode.id][node.id]
+                            self.tot_degree += 2
+                            break
             self.nodes.append(newnode)
             self.num_nodes += 1
 
@@ -174,22 +177,25 @@ class GraphScaleFree:
         print(costs, sum(costs), sum(list(reversed(sorted(costs)))[:int(0.1*len(costs))]))
 
     @staticmethod
-    def create_graph100():
-        gra = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+    def create_graph100(max_n_neighbors=None):
+        gra = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2,
+                             randomstate=np.random.RandomState(1234), max_n_neighbors=max_n_neighbors)
         gra.sort_probabilities()  # must do this or probabilities will all be 1
         gra.assign_nodes_costs()  # must do this or costs will all be 0
         return gra
 
     @staticmethod
-    def create_graph1000():
-        gra = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+    def create_graph1000(max_n_neighbors=None):
+        gra = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2,
+                             randomstate=np.random.RandomState(1234), max_n_neighbors=max_n_neighbors)
         gra.sort_probabilities()  # must do this or probabilities will all be 1
         gra.assign_nodes_costs()  # must do this or costs will all be 0
         return gra
 
     @staticmethod
-    def create_graph10000():
-        gra = GraphScaleFree(nodes=10000, n_init_nodes=5, n_conn_per_node=10, randomstate=np.random.RandomState(1234))
+    def create_graph10000(max_n_neighbors=None):
+        gra = GraphScaleFree(nodes=10000, n_init_nodes=3, n_conn_per_node=2,
+                             randomstate=np.random.RandomState(1234), max_n_neighbors=max_n_neighbors)
         gra.sort_probabilities()  # must do this or probabilities will all be 1
         gra.assign_nodes_costs()  # must do this or costs will all be 0
         return gra
@@ -263,31 +269,38 @@ class GraphScaleFree:
 
 
 if __name__ == '__main__':
+    max_neigh = 15
     # HOW TO CREATE THE GRAPH WITH 100 NODES WE WILL USE
-    gr = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+    gr = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2,
+                        randomstate=np.random.RandomState(1234), max_n_neighbors=max_neigh)
     gr.plot_degrees(name="- Scale-Free 100 Nodes")  # in case you want to plot the distribution of the degrees
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
-    gr.to_csv(name="graph100")  # in case you want to save it
-
-    # Select one or more seeds for the m.c. sampling
-    seeds = [35, 45]
-    probabilities = gr.monte_carlo_sampling(1000, seeds)
-    print(probabilities)
+    gr.to_csv(name="graph100" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
 
     # HOW TO CREATE THE GRAPH WITH 1000 NODES WE WILL USE
-    gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234))
+    gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2,
+                        randomstate=np.random.RandomState(1234), max_n_neighbors=max_neigh)
     gr.plot_degrees(name="- Scale-Free 1000 Nodes")  # in case you want to plot the distribution of the degrees
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
-    gr.to_csv(name="graph1000")  # in case you want to save it
+    gr.to_csv(name="graph1000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+
+    # Select one or more seeds for the m.c. sampling
 
     # HOW TO CREATE THE GRAPH WITH 10000 NODES WE WILL USE
-    gr = GraphScaleFree(nodes=10000, n_init_nodes=5, n_conn_per_node=10, randomstate=np.random.RandomState(1234))
+    gr = GraphScaleFree(nodes=10000, n_init_nodes=3, n_conn_per_node=2,
+                        randomstate=np.random.RandomState(1234), max_n_neighbors=max_neigh)
     gr.plot_degrees(name="- Scale-Free 10000 Nodes")  # in case you want to plot the distribution of the degrees
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
-    gr.to_csv(name="graph10000")  # in case you want to save it
+    gr.to_csv(name="graph10000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+    """
+    seeds = [i for i in range(8000, 10000)]
+    probabilities = gr.monte_carlo_sampling(20, seeds)
+    print(probabilities, sum(probabilities))
+    """
+
 
 
 
