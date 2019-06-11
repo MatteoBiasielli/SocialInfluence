@@ -17,6 +17,8 @@ class Node:
         self.inactive = False
         self.adjacency_list = []
         self.adjacency_weights = []
+        self.ucb1_estimate_param = []
+        self.ts_estimate_param = []
         self.adjacency_live = []
         self.degree = 0
         self.id = Node.count_id
@@ -360,6 +362,88 @@ class GraphScaleFree:
                 file.write("," + str(result[i]))
             file.close()
         return result
+
+    def init_estimates(self, estimator="ucb1", approach="pessimistic"):
+        for i in self.nodes:
+            for j in range(len(i.adjacency_weights)):
+                if estimator == "ucb1":
+                    if approach == "pessimistic":
+                        CASSINISTE = "BAU"
+                    elif approach == "optimistic":
+                        CASSINISTE = "MIAO"
+
+                elif estimator == "ts":
+                    i.estimate_param = [[1, 1]] * len(i.adjacency_weights)
+
+    def update_estimate(self, node_from, realizations, estimator="ucb1"):
+        for r in realizations:
+            if estimator == "ucb1":
+                estimate_param = node_from.ucb1_estimate_param
+                # CASSINISTE
+
+            elif estimator == "ts":
+                estimate_param = node_from.ts_estimate_param
+                for i in range(len(realizations)):
+                    estimate_param[i][0] += realizations[i]
+                    estimate_param[i][1] += 1 - realizations[i]
+
+    def update_weights(self, estimator="ucb1"):
+        for node in self.nodes:
+            for i in range(len(node.adjacency_weights)):
+                if estimator == "ucb1":
+                    CASSINISTE = "WOOF"
+
+                elif estimator == "ts":
+                    node.adjacency_weights[i] = np.random.beta(a=node.ts_estimate_param[i][0],
+                                                               b=node.ts_estimate_param[i][1])
+
+
+
+    def prog_cascade(self, seeds):
+        explore_next = [s for s in seeds]
+        realizations_per_node = []
+
+        for i in explore_next:
+            realizations = []
+            for j in range(len(i.adjacency_weights)):
+                realization = np.random.binomial(1, i.adjacency_weights[j])
+                realizations.append(realization)
+
+                if realization == 1:
+                    explore_next.append(i.adjacency_list[j])
+
+            realizations_per_node.append([i.id, realizations])
+
+        return realizations_per_node
+
+    def seeds_at_time_zero(self, budget):
+        seeds = []
+        nodes_deg = [i.degree for i in self.nodes]
+
+        while budget > 0 and len(nodes_deg) > 0:
+            seed = int(np.argmax(nodes_deg))
+            if budget - seed.cost > 0:
+                budget -= seed.cost
+                seeds.append(seed)
+
+            nodes_deg.remove(seed)
+
+        return seeds, budget
+
+    def print_estimates(self, estimator="ucb1"):
+        for i in self.nodes:
+            if estimator == "ucb1":
+                estimates = i.ucb1_estimate_param
+            elif estimator == "ts":
+                estimates = i.ts_estimate_param
+
+            for j in range(len(estimates)):
+                print(estimates[j])
+
+    def print_edges(self):
+        for i in self.nodes:
+            for j in range(len(i.adjacency_weights)):
+                print(i.adjacency_weights[j])
 
 
 if __name__ == '__main__':
