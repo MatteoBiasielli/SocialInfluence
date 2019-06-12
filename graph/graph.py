@@ -7,7 +7,6 @@ import tqdm
 
 
 class Node:
-
     count_id = 0
 
     def __init__(self):
@@ -20,7 +19,7 @@ class Node:
         self.adjacency_list = []
         self.adjacency_weights = []
         self.adjacency_features = []
-        self.ucb1_estimate_param = []
+        self.ucb1_estimate_param = []  # each element is [empirical mean, bound, num of samples]
         self.ts_estimate_param = []
         self.adjacency_live = []
         self.degree = 0
@@ -75,11 +74,11 @@ class Node:
 
     def sort_probabilities(self, seed, adj_matrix, common_args, lin_comb_params):
         for i in range(self.degree):
-            feats = [sigmoid(0.2*(self.degree/self.adjacency_list[i].degree - 1)),
-                                                 seed.rand(),
-                                                 self.n_common_neighbors(self.adjacency_list[i], adj_matrix)/self.adjacency_list[i].degree,
-                                                 common_args[self.id][self.adjacency_list[i].id]]
-            self.adjacency_weights[i] = lin_comb_params [0] * feats[0] + \
+            feats = [sigmoid(0.2 * (self.degree / self.adjacency_list[i].degree - 1)),
+                     seed.rand(),
+                     self.n_common_neighbors(self.adjacency_list[i], adj_matrix) / self.adjacency_list[i].degree,
+                     common_args[self.id][self.adjacency_list[i].id]]
+            self.adjacency_weights[i] = lin_comb_params[0] * feats[0] + \
                                         lin_comb_params[1] * feats[1] + \
                                         lin_comb_params[2] * feats[2] + \
                                         lin_comb_params[3] * feats[3]
@@ -101,7 +100,6 @@ def sigmoid(x, scale=0.2):
 
 
 class GraphScaleFree:
-
     LIN_COMB_PARAMS = [0.3, 0.15, 0.4, 0.15]
 
     def __init__(self, nodes=100, n_init_nodes=3, n_conn_per_node=2, randomstate=np.random.RandomState(1234),
@@ -121,7 +119,6 @@ class GraphScaleFree:
                 self.tot_degree += 2
             self.nodes.append(newnode)
             self.num_nodes += 1
-
 
         while self.num_nodes < nodes:
 
@@ -193,7 +190,7 @@ class GraphScaleFree:
     def assign_nodes_costs(self):
         maxdeg = np.max([n.degree for n in self.nodes])
         for n in self.nodes:
-            n.cost = 10 + (n.degree ** (2 - 0.5*n.degree/maxdeg)) * np.mean(n.adjacency_weights)
+            n.cost = 10 + (n.degree ** (2 - 0.5 * n.degree / maxdeg)) * np.mean(n.adjacency_weights)
 
     def print_costs_degrees(self):
         degrees = []
@@ -202,7 +199,7 @@ class GraphScaleFree:
             degrees.append(n.degree)
             costs.append(n.cost)
         print(degrees)
-        print(costs, sum(costs), sum(list(reversed(sorted(costs)))[:int(0.1*len(costs))]))
+        print(costs, sum(costs), sum(list(reversed(sorted(costs)))[:int(0.1 * len(costs))]))
 
     @staticmethod
     def create_graph100(max_n_neighbors=None, lin_comb_parameters=None):
@@ -314,7 +311,8 @@ class GraphScaleFree:
 
         return result
 
-    def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", m_c_sampling_iterations=100, file_name=""):
+    def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", m_c_sampling_iterations=100,
+                        file_name=""):
         self.assign_nodes_costs()
         feasible_nodes = []
         generated_increments = []
@@ -393,21 +391,41 @@ class GraphScaleFree:
         return result
 
     def init_estimates(self, estimator="ucb1", approach="pessimistic"):
+        """Initializes the estimated probabilities of all edges"""
         for i in self.nodes:
             for j in range(i.degree):
                 if estimator == "ucb1":
                     if approach == "pessimistic":
-                        CASSINISTE = "BAU"
+                        i.ucb1_estimate_param = [[0, 0, 0] for _ in range(i.degree)]
                     elif approach == "optimistic":
-                        CASSINISTE = "MIAO"
+                        i.ucb1_estimate_param = [[1, 0, 0] for _ in range(i.degree)]
+                    elif approach == "neutral":
+                        i.ucb1_estimate_param = [[0.5, 0, 0] for _ in range(i.degree)]
 
                 elif estimator == "ts":
                     i.ts_estimate_param = [[1, 1] for _ in range(i.degree)]
 
-    def update_estimate(self, id_from, realizations, estimator="ucb1"):
+    def update_estimate(self, id_from, realizations, time, estimator="ucb1"):
+        """Updates the parameters of each edge of the specified node"""
         if estimator == "ucb1":
             estimate_param = self.nodes[id_from].ucb1_estimate_param
-            # CASSINISTE
+
+            for i in range(len(realizations)):
+                # if the edge was "stimulated"
+                if realizations[i] != -1:
+                    # if first sample ever observed, overwrite mean
+                    if estimate_param[i][2] == 0:
+                        estimate_param[i][0] = realizations[i]
+                    else:
+                        # update empirical mean
+                        estimate_param[i][0] = (estimate_param[i][0] * estimate_param[i][2] + realizations[i]) / (
+                                    estimate_param[i][2] + 1)
+                    # update bound and increase number of samples
+                    estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
+                    estimate_param[i][2] += 1
+                else:
+                    # only update bound
+                    estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
 
         elif estimator == "ts":
             estimate_param = self.nodes[id_from].ts_estimate_param
@@ -417,9 +435,16 @@ class GraphScaleFree:
                     estimate_param[i][0] += realizations[i]
                     estimate_param[i][1] += 1 - realizations[i]
 
-    def update_weights(self, estimator="ucb1", scenario="no_features"):
+    def update_weights(self, estimator="ucb1", scenario="no_features", exp_coeff=1):
+        """Updates the estimated probabilities of each edge in the graph (weights)"""
         if estimator == "ucb1":
-            CASSINISTE = "WOOF"
+            for node in self.nodes:
+                for i in range(node.degree):
+                    # new weight = sum of empirical mean and exploration coeff. * ucb1 bound
+                    node.adjacency_weights[i] = node.ucb1_estimate_param[i][0] + exp_coeff * \
+                                                node.ucb1_estimate_param[i][1]
+
+            # TODO features
 
         elif estimator == "ts":
             for node in self.nodes:
@@ -453,7 +478,7 @@ class GraphScaleFree:
         for i in explore_next_ids:
             realizations = []
 
-            for j in range(i.degree):
+            for j in range(self.nodes[i].degree):
                 adjacent_node_id = self.nodes[i].adjacency_list[j].id
 
                 if not self.nodes[adjacent_node_id].isActive():
@@ -514,8 +539,8 @@ if __name__ == '__main__':
     gr.plot_degrees(name="- Scale-Free 100 Nodes")  # in case you want to plot the distribution of the degrees
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
-    gr.to_csv(name="graph100" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
-
+    gr.to_csv(
+        name="graph100" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
 
     seeds = []
     greedy_approach = "standard"
@@ -536,7 +561,8 @@ if __name__ == '__main__':
     gr.plot_degrees(name="- Scale-Free 1000 Nodes")  # in case you want to plot the distribution of the degrees
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
-    gr.to_csv(name="graph1000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+    gr.to_csv(
+        name="graph1000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
 
     # Select one or more seeds for the m.c. sampling
 
@@ -546,15 +572,10 @@ if __name__ == '__main__':
     gr.plot_degrees(name="- Scale-Free 10000 Nodes")  # in case you want to plot the distribution of the degrees
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
-    gr.to_csv(name="graph10000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+    gr.to_csv(
+        name="graph10000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
     """
     seeds = [i for i in range(8000, 10000)]
     probabilities = gr.monte_carlo_sampling(20, seeds)
     print(probabilities, sum(probabilities))
     """
-
-
-
-
-
-
