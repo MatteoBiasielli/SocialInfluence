@@ -19,7 +19,7 @@ class Node:
         self.adjacency_list = []
         self.adjacency_weights = []
         self.adjacency_features = []
-        self.ucb1_estimate_param = []  # each element is [empirical mean, bound, num of samples]
+        self.ucb1_estimate_param = []  # each element is [empirical mean, bound, numOfSamples, hasBeenVisited]
         self.ts_estimate_param = []
         self.adjacency_live = []
         self.degree = 0
@@ -396,11 +396,11 @@ class GraphScaleFree:
             for j in range(i.degree):
                 if estimator == "ucb1":
                     if approach == "pessimistic":
-                        i.ucb1_estimate_param = [[0, 0, 1] for _ in range(i.degree)]
+                        i.ucb1_estimate_param = [[0, 0, 1, False] for _ in range(i.degree)]
                     elif approach == "optimistic":
-                        i.ucb1_estimate_param = [[1, 0, 1] for _ in range(i.degree)]
+                        i.ucb1_estimate_param = [[1, 0, 1, False] for _ in range(i.degree)]
                     elif approach == "neutral":
-                        i.ucb1_estimate_param = [[0.5, 0, 1] for _ in range(i.degree)]
+                        i.ucb1_estimate_param = [[0.5, 0, 1, False] for _ in range(i.degree)]
 
                 elif estimator == "ts":
                     i.ts_estimate_param = [[1, 1] for _ in range(i.degree)]
@@ -413,20 +413,19 @@ class GraphScaleFree:
             for i in range(len(realizations)):
                 # if the edge was "stimulated"
                 if realizations[i] != -1:
-                    # if first sample ever observed, overwrite mean and update bound
-                    if estimate_param[i][2] == 0:
+                    # if first sample ever observed, overwrite mean
+                    if not estimate_param[i][3]:
                         estimate_param[i][0] = realizations[i]
-                        estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
+                        estimate_param[i][3] = True
                     else:
-                        # update empirical mean and bound
+                        # update empirical mean
                         estimate_param[i][0] = (estimate_param[i][0] * estimate_param[i][2] + realizations[i]) / (
-                                    estimate_param[i][2] + 1)
-                        estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
+                                estimate_param[i][2] + 1)
                         # increase number of samples
                         estimate_param[i][2] += 1
-                else:
-                    # only update bound
-                    estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
+
+                # update bound
+                estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
 
         elif estimator == "ts":
             estimate_param = self.nodes[id_from].ts_estimate_param
@@ -439,11 +438,19 @@ class GraphScaleFree:
     def update_weights(self, estimator="ucb1", scenario="no_features", exp_coeff=1):
         """Updates the estimated probabilities of each edge in the graph (weights)"""
         if estimator == "ucb1":
+            all_weights = []
             for node in self.nodes:
                 for i in range(node.degree):
                     # new weight = sum of empirical mean and exploration coeff. * ucb1 bound
                     node.adjacency_weights[i] = node.ucb1_estimate_param[i][0] + exp_coeff * \
                                                 node.ucb1_estimate_param[i][1]
+                    all_weights.append(node.adjacency_weights[i])
+
+            # normalize all weights
+            for node in self.nodes:
+                for i in range(node.degree):
+                    node.adjacency_weights[i] = (node.adjacency_weights[i] - min(all_weights)) / (
+                            max(all_weights) - min(all_weights))
 
             # TODO features
 
@@ -530,6 +537,13 @@ class GraphScaleFree:
         for i in self.nodes:
             for j in range(len(i.adjacency_weights)):
                 print(i.adjacency_weights[j])
+
+    def get_edges(self):
+        edges = []
+        for i in self.nodes:
+            for j in range(len(i.adjacency_weights)):
+                edges.append(i.adjacency_weights[j])
+        return edges
 
 
 if __name__ == '__main__':
