@@ -396,11 +396,11 @@ class GraphScaleFree:
             for j in range(i.degree):
                 if estimator == "ucb1":
                     if approach == "pessimistic":
-                        i.ucb1_estimate_param = [[0, 0, 0] for _ in range(i.degree)]
+                        i.ucb1_estimate_param = [[0, 0, 1] for _ in range(i.degree)]
                     elif approach == "optimistic":
-                        i.ucb1_estimate_param = [[1, 0, 0] for _ in range(i.degree)]
+                        i.ucb1_estimate_param = [[1, 0, 1] for _ in range(i.degree)]
                     elif approach == "neutral":
-                        i.ucb1_estimate_param = [[0.5, 0, 0] for _ in range(i.degree)]
+                        i.ucb1_estimate_param = [[0.5, 0, 1] for _ in range(i.degree)]
 
                 elif estimator == "ts":
                     i.ts_estimate_param = [[1, 1] for _ in range(i.degree)]
@@ -413,16 +413,17 @@ class GraphScaleFree:
             for i in range(len(realizations)):
                 # if the edge was "stimulated"
                 if realizations[i] != -1:
-                    # if first sample ever observed, overwrite mean
+                    # if first sample ever observed, overwrite mean and update bound
                     if estimate_param[i][2] == 0:
                         estimate_param[i][0] = realizations[i]
+                        estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
                     else:
-                        # update empirical mean
+                        # update empirical mean and bound
                         estimate_param[i][0] = (estimate_param[i][0] * estimate_param[i][2] + realizations[i]) / (
                                     estimate_param[i][2] + 1)
-                    # update bound and increase number of samples
-                    estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
-                    estimate_param[i][2] += 1
+                        estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])
+                        # increase number of samples
+                        estimate_param[i][2] += 1
                 else:
                     # only update bound
                     estimate_param[i][1] = np.sqrt((2 * np.log(time)) / estimate_param[i][2])

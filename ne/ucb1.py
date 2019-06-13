@@ -11,7 +11,7 @@ true_graph = g.GraphScaleFree.create_graph100()
 est_graph = g.GraphScaleFree.create_graph100()
 
 # INITIALIZATION
-est_graph.init_estimates(estimator="ucb1")
+est_graph.init_estimates(estimator="ucb1", approach=approach)
 
 # Buy seed based on model
 seeds, remainder = true_graph.seeds_at_time_zero(budget)
