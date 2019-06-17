@@ -388,6 +388,8 @@ class GraphScaleFree:
             for i in range(1, len(result)):
                 file.write("," + str(result[i]))
             file.close()
+
+        print("Best nodes found: {}".format(result))
         return result
 
     def init_estimates(self, estimator="ucb1", approach="pessimistic"):
@@ -435,7 +437,7 @@ class GraphScaleFree:
                     estimate_param[i][0] += realizations[i]
                     estimate_param[i][1] += 1 - realizations[i]
 
-    def update_weights(self, estimator="ucb1", scenario="no_features", exp_coeff=1):
+    def update_weights(self, estimator="ucb1", use_features=False, exp_coeff=1):
         """Updates the estimated probabilities of each edge in the graph (weights)"""
         if estimator == "ucb1":
             all_weights = []
@@ -452,16 +454,15 @@ class GraphScaleFree:
                     node.adjacency_weights[i] = (node.adjacency_weights[i] - min(all_weights)) / (
                             max(all_weights) - min(all_weights))
 
-            # TODO features
-
         elif estimator == "ts":
             for node in self.nodes:
                 for i in range(node.degree):
                     node.adjacency_weights[i] = np.random.beta(a=node.ts_estimate_param[i][0],
                                                                b=node.ts_estimate_param[i][1])
-            if scenario == "features":
-                self.set_lin_comb_params(self.estimate_features_parameters())
-                self.sort_probabilities()
+
+        if use_features:
+            self.set_lin_comb_params(self.estimate_features_parameters())
+            self.sort_probabilities()
 
     def estimate_features_parameters(self):
         dataset_x = []
@@ -544,6 +545,13 @@ class GraphScaleFree:
             for j in range(len(i.adjacency_weights)):
                 edges.append(i.adjacency_weights[j])
         return edges
+
+    def get_empirical_means(self):
+        means = []
+        for i in self.nodes:
+            for j in range(i.degree):
+                means.append(i.ucb1_estimate_param[j][0])
+        return means
 
 
 if __name__ == '__main__':
