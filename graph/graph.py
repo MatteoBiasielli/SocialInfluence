@@ -357,10 +357,10 @@ class GraphScaleFree:
                 result.__delitem__(-1)
 
                 if greedy_approach == "standard":
-                    generated_increments[i] = increment - generated_increments[i]
+                    generated_increments[i] = increment
 
                 elif greedy_approach == "cost_based":
-                    generated_increments[i] = (increment - generated_increments[i]) / feasible_nodes[i].cost
+                    generated_increments[i] = increment / feasible_nodes[i].cost
 
             winner_index = np.argmax(generated_increments)
             winner_node = feasible_nodes[int(winner_index)]
