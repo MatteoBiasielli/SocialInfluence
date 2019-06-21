@@ -1,9 +1,10 @@
 import graph.graph as g
 import tqdm
+import numpy as np
 
 # PARAMETERS
 approach = "pessimistic"
-repetitions = 1
+repetitions = 100
 budget = 50
 time = 0
 
@@ -18,16 +19,18 @@ true_graph.print_edges()
 for i in range(repetitions):
     print("Repetition " + str(i))
     # Witness cascade
-    realizations_per_node = true_graph.prog_cascade(seeds)
+    realizations_per_node = true_graph.prog_cascade(seeds)[0]
     time += 1
     # Update representation (est_graph) based on observations
     for record in realizations_per_node:
         est_graph.update_estimate(record[0], record[1], time=time, estimator="ts")
 
-    est_graph.update_weights(estimator="ts", use_features=True)
+    est_graph.update_weights(estimator="ts", use_features=False)
 
     # Find the best seeds for next repetition
     seeds = est_graph.find_best_seeds(initial_seeds=[], budget=budget, m_c_sampling_iterations=10)
 
-est_graph.print_estimates(estimator="ts")
-est_graph.print_edges()
+difference = abs(np.subtract(est_graph.get_edges(), true_graph.get_edges()))
+print("Differences in edges estimations and true values:")
+print(difference)
+print("Cumulative error: {}".format(np.sum(difference)))

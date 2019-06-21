@@ -312,7 +312,7 @@ class GraphScaleFree:
         return result
 
     def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", m_c_sampling_iterations=100,
-                        file_name=""):
+                        file_name="", verbose=True):
         self.assign_nodes_costs()
         feasible_nodes = []
         generated_increments = []
@@ -347,7 +347,8 @@ class GraphScaleFree:
         deletion_indexes.clear()
 
         while len(feasible_nodes) != 0:
-            print("queue nodes " + str(len(feasible_nodes)) + " - " + "remaining budget " + str(budget) + " ...")
+            if verbose:
+                print("queue nodes " + str(len(feasible_nodes)) + " - " + "remaining budget " + str(budget) + " ...")
 
             for i in range(len(feasible_nodes)):
 
@@ -389,7 +390,6 @@ class GraphScaleFree:
                 file.write("," + str(result[i]))
             file.close()
 
-        print("Best nodes found: {}".format(result))
         return result
 
     def init_estimates(self, estimator="ucb1", approach="pessimistic"):
@@ -415,7 +415,7 @@ class GraphScaleFree:
             for i in range(len(realizations)):
                 # if the edge was "stimulated"
                 if realizations[i] != -1:
-                    # if first sample ever observed, overwrite mean
+                    # if first sample ever observed, overwrite dummy sample
                     if not estimate_param[i][3]:
                         estimate_param[i][0] = realizations[i]
                         estimate_param[i][3] = True
@@ -444,8 +444,9 @@ class GraphScaleFree:
             for node in self.nodes:
                 for i in range(node.degree):
                     # new weight = sum of empirical mean and exploration coeff. * ucb1 bound
-                    node.adjacency_weights[i] = node.ucb1_estimate_param[i][0] + exp_coeff * \
+                    new_weight = node.ucb1_estimate_param[i][0] + exp_coeff * \
                                                 node.ucb1_estimate_param[i][1]
+                    node.adjacency_weights[i] = new_weight
                     all_weights.append(node.adjacency_weights[i])
 
             # normalize all weights
@@ -504,10 +505,11 @@ class GraphScaleFree:
 
             realizations_per_node.append([i, realizations])
 
+        nodes_activated = len(explore_next_ids)
         for id in explore_next_ids:
             self.nodes[id].setInactive()
 
-        return realizations_per_node
+        return realizations_per_node, nodes_activated
 
     def seeds_at_time_zero(self, budget):
         seeds = []
