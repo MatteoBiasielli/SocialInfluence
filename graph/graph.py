@@ -317,7 +317,7 @@ class GraphScaleFree:
 
         return result
 
-    def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", m_c_sampling_iterations=100,
+    def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", delta=0.25, epsilon=0.1,
                         file_name="", verbose=True):
         self.assign_nodes_costs()
         feasible_nodes = []
@@ -359,6 +359,7 @@ class GraphScaleFree:
             for i in range(len(feasible_nodes)):
 
                 result.append(feasible_nodes[i].id)
+                m_c_sampling_iterations = int(1 / epsilon**2 * np.log(len(result) + 1) * np.log(1 / delta))
                 m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
                 increment = sum(m_c_probabilities)
                 result.__delitem__(-1)
@@ -373,6 +374,9 @@ class GraphScaleFree:
             winner_node = feasible_nodes[int(winner_index)]
             result.append(winner_node.id)
             budget -= winner_node.cost
+
+            if verbose:
+                print("node " + str(winner_node.id) + " acquired.")
 
             for i in range(len(feasible_nodes)):
                 if feasible_nodes[i].id == winner_node.id:
@@ -577,6 +581,8 @@ if __name__ == '__main__':
     seeds = []
     greedy_approach = "standard"
     m_c_sampling_iterations = 100
+    epsilon = 0.1
+    delta = 0.25
     file_name = ""
     # initial_seeds: the nodes, if any, that we have already bought as seeds, if the algorithm start from zero,
     # leave an empty list (default = empty list)
@@ -584,8 +590,9 @@ if __name__ == '__main__':
     # node that generates the increment (default = "standard)
     # file_name: if not empty, creates and writes the result in a file called "file_name.csv" (default = empty)
     # returns: an ordered list of node ids corresponding to the best seed set found
+    # Number of iteration of m.c. sampling = 1/epsilon**2 * log(num_of_seeds + 1) * log(1/delta)
     print(gr.find_best_seeds(initial_seeds=seeds, greedy_approach=greedy_approach,
-                             m_c_sampling_iterations=m_c_sampling_iterations, file_name=file_name))
+                             epsilon=epsilon, delta=delta, file_name=file_name))
 
     # HOW TO CREATE THE GRAPH WITH 1000 NODES WE WILL USE
     gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2,
