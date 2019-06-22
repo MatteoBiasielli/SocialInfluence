@@ -562,10 +562,11 @@ if __name__ == '__main__':
     gr = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2,
                         randomstate=np.random.RandomState(1234), max_n_neighbors=max_neigh)
     gr.plot_degrees(name="- Scale-Free 100 Nodes")  # in case you want to plot the distribution of the degrees
+    gr.set_lin_comb_params(pars=None)
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
     gr.to_csv(
-        name="graph100" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+        name="graph100" + (("max" + str(max_neigh)) if max_neigh is not None else ""))  # in case you want to save it
 
     seeds = []
     greedy_approach = "standard"
@@ -584,10 +585,11 @@ if __name__ == '__main__':
     gr = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2,
                         randomstate=np.random.RandomState(1234), max_n_neighbors=max_neigh)
     gr.plot_degrees(name="- Scale-Free 1000 Nodes")  # in case you want to plot the distribution of the degrees
+    gr.set_lin_comb_params(pars=None)
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
     gr.to_csv(
-        name="graph1000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+        name="graph1000" + (("max" + str(max_neigh)) if max_neigh is not None else "")) # in case you want to save it
 
     # Select one or more seeds for the m.c. sampling
 
@@ -595,10 +597,11 @@ if __name__ == '__main__':
     gr = GraphScaleFree(nodes=10000, n_init_nodes=3, n_conn_per_node=2,
                         randomstate=np.random.RandomState(1234), max_n_neighbors=max_neigh)
     gr.plot_degrees(name="- Scale-Free 10000 Nodes")  # in case you want to plot the distribution of the degrees
+    gr.set_lin_comb_params(pars=None)
     gr.sort_probabilities()  # must do this or probabilities will all be 1
     gr.assign_nodes_costs()  # must do this or costs will all be 0
     gr.to_csv(
-        name="graph10000" + ("max" + str(max_neigh)) if max_neigh is not None else "")  # in case you want to save it
+        name="graph10000" + (("max" + str(max_neigh)) if max_neigh is not None else ""))  # in case you want to save it
     """
     seeds = [i for i in range(8000, 10000)]
     probabilities = gr.monte_carlo_sampling(20, seeds)
