@@ -202,30 +202,36 @@ class GraphScaleFree:
         print(costs, sum(costs), sum(list(reversed(sorted(costs)))[:int(0.1 * len(costs))]))
 
     @staticmethod
-    def create_graph100(max_n_neighbors=None, lin_comb_parameters=None):
+    def create_graph100(max_n_neighbors=None, lin_comb_parameters=None, print_budget=False):
         gra = GraphScaleFree(nodes=100, n_init_nodes=3, n_conn_per_node=2,
                              randomstate=np.random.RandomState(1234), max_n_neighbors=max_n_neighbors)
         gra.set_lin_comb_params(pars=lin_comb_parameters)
         gra.sort_probabilities()  # must do this or probabilities will all be 1
         gra.assign_nodes_costs()  # must do this or costs will all be 0
+        if print_budget:
+            print(gra.compute_budget())
         return gra
 
     @staticmethod
-    def create_graph1000(max_n_neighbors=None, lin_comb_parameters=None):
+    def create_graph1000(max_n_neighbors=None, lin_comb_parameters=None, print_budget=False):
         gra = GraphScaleFree(nodes=1000, n_init_nodes=3, n_conn_per_node=2,
                              randomstate=np.random.RandomState(1234), max_n_neighbors=max_n_neighbors)
         gra.set_lin_comb_params(pars=lin_comb_parameters)
         gra.sort_probabilities()  # must do this or probabilities will all be 1
         gra.assign_nodes_costs()  # must do this or costs will all be 0
+        if print_budget:
+            print(gra.compute_budget())
         return gra
 
     @staticmethod
-    def create_graph10000(max_n_neighbors=None, lin_comb_parameters=None):
+    def create_graph10000(max_n_neighbors=None, lin_comb_parameters=None, print_budget=False):
         gra = GraphScaleFree(nodes=10000, n_init_nodes=3, n_conn_per_node=2,
                              randomstate=np.random.RandomState(1234), max_n_neighbors=max_n_neighbors)
         gra.set_lin_comb_params(pars=lin_comb_parameters)
         gra.sort_probabilities()  # must do this or probabilities will all be 1
         gra.assign_nodes_costs()  # must do this or costs will all be 0
+        if print_budget:
+            print(gra.compute_budget())
         return gra
 
     def activate_live_edges(self):
