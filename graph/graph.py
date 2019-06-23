@@ -290,6 +290,9 @@ class GraphScaleFree:
             target_node.setInactive()
 
     def monte_carlo_sampling(self, number_of_iterations, seeds):
+        for n in self.nodes:
+            n.removeSeed()
+            n.resetNode()
         result = np.zeros(len(self.nodes))
         for seed in seeds:
             self.nodes[seed].setSeed()
@@ -312,7 +315,7 @@ class GraphScaleFree:
 
     def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", delta=0.25, epsilon=0.1,
                         file_name="", verbose=True):
-        self.assign_nodes_costs()
+        # self.assign_nodes_costs()
         feasible_nodes = []
         generated_increments = []
         result = []
