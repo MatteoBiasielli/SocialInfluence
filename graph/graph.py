@@ -280,7 +280,6 @@ class GraphScaleFree:
                         node.adjacency_list[i].setActive()
                         node_to_be_expanded.append(node.adjacency_list[i])
         # For all the live edges, spreads the activation to all the neighbours
-        tmp = []
         while len(node_to_be_expanded) > 0:
             target_node = node_to_be_expanded.pop(0)
             for i in range(len(target_node.adjacency_list)):
