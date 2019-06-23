@@ -359,7 +359,7 @@ class GraphScaleFree:
             for i in range(len(feasible_nodes)):
 
                 result.append(feasible_nodes[i].id)
-                m_c_sampling_iterations = int(1 / epsilon**2 * np.log(len(result) + 1) * np.log(1 / delta))
+                m_c_sampling_iterations = int((1 / (epsilon**2)) * np.log(len(result) + 1) * np.log(1 / delta))
                 m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
                 increment = sum(m_c_probabilities)
                 result.__delitem__(-1)
