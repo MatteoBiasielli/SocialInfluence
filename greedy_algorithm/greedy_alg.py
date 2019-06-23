@@ -3,26 +3,24 @@ import numpy as np
 from multiprocessing import Process, Manager
 import tqdm
 
-N_WORKERS = 20
+N_WORKERS = 4
 N_NODES = 100
-appearence_times = np.zeros([N_NODES, 2])
-num_of_experiment = 40 // N_WORKERS
+deltas = [0.25, 0.2, 0.15, 0.1, 0.05]
+num_of_experiment = 20
+experiments_per_worker = num_of_experiment // N_WORKERS
 count = 0
-
-
-for i in appearence_times:
-    i[1] = count
-    count += 1
 
 
 def f(app_lists):
     gr = GraphScaleFree.create_graph100()
-    app_lis = np.zeros(N_NODES)
-    for _ in tqdm.tqdm(range(num_of_experiment)):
-        tmp = gr.find_best_seeds(initial_seeds=[], verbose=False)
-        for id in tmp:
-            app_lis[id] += 1
-    app_lists.append(app_lis)
+    for delta in deltas:
+        tmp = []
+        for _ in tqdm.tqdm(range(experiments_per_worker)):
+            # greedy approach = cost_based to do
+            best_seeds = gr.find_best_seeds(initial_seeds=[], verbose=False, greedy_approach="standard", delta=delta)
+            best_activations_probs = gr.monte_carlo_sampling(1000, best_seeds)
+            tmp.append(sum(best_activations_probs))
+        app_lists.append(sum(tmp) / len(tmp))
 
 
 if __name__ == '__main__':
@@ -37,10 +35,6 @@ if __name__ == '__main__':
     # join all
     for p in procs:
         p.join()
-    for app_list in app_lists:
-        for i in range(N_NODES):
-            appearence_times[i][0] += app_list[i]
-    appearence_times = appearence_times / [num_of_experiment * N_WORKERS, 1]
-    appearence_times = list(appearence_times)
-    appearence_times.sort(key=lambda tup: tup[0], reverse=True)
-    print(appearence_times)
+
+    # todo the final print
+    print(sum(app_lists) / len(app_lists))
