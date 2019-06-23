@@ -270,8 +270,7 @@ class GraphScaleFree:
 
     def propagate_cascade(self):
         self.prepare_for_cascade()
-        just_activated_nodes = []
-        propagation = True
+        node_to_be_expanded = []
         # Starting from seeds, it activates all the node corresponding to live edges
         for node in self.nodes:
             if node.isSeed():
@@ -279,22 +278,17 @@ class GraphScaleFree:
                     if (node.adjacency_list[i].isSuceptible()) & (not node.adjacency_list[i].isSeed()) & (
                             node.adjacency_live[i] == 1):
                         node.adjacency_list[i].setActive()
-
+                        node_to_be_expanded.append(node.adjacency_list[i])
         # For all the live edges, spreads the activation to all the neighbours
-        while propagation:
-            propagation = False
-
-            for node in self.nodes:
-                if (node.isActive()) & (not node.isSeed()) & (node not in just_activated_nodes):
-                    propagation = True
-                    for i in range(len(node.adjacency_list)):
-                        if (node.adjacency_list[i].isSuceptible()) & (not node.adjacency_list[i].isSeed()) & (
-                                node.adjacency_live[i] == 1):
-                            node.adjacency_list[i].setActive()
-                            just_activated_nodes.append(node.adjacency_list[i])
-                    node.setInactive()
-
-            just_activated_nodes.clear()
+        tmp = []
+        while len(node_to_be_expanded) > 0:
+            target_node = node_to_be_expanded.pop(0)
+            for i in range(len(target_node.adjacency_list)):
+                if (target_node.adjacency_list[i].isSuceptible()) and (not target_node.adjacency_list[i].isSeed()) and \
+                        (target_node.adjacency_live[i] == 1):
+                    target_node.adjacency_list[i].setActive()
+                    node_to_be_expanded.append(target_node.adjacency_list[i])
+            target_node.setInactive()
 
     def monte_carlo_sampling(self, number_of_iterations, seeds):
         result = np.zeros(len(self.nodes))
