@@ -6,64 +6,91 @@ import operator
 from joblib import Parallel, delayed
 
 
-def run_experiment(approach, repetitions, budget, B, verbose=True):
+def avg_errors(exp_results: list, name: str) -> list:
+    pass
+
+
+def run_experiment(approach, repetitions, n_cascades, budget, B, verbose=True) -> dict:
     # INITIALIZATION
     true_graph = g.GraphScaleFree.create_graph100()
     est_graph = g.GraphScaleFree.create_graph100()
 
     est_graph.init_estimates(estimator="ucb1", approach=approach)
     time = 1
-    exp_reward = []
+    history_cum_error = []
+    history_prob_errors = []
 
     # Buy seed based on model
-    history_of_seeds = []
     seeds, remainder = true_graph.seeds_at_time_zero(budget)
-    history_of_seeds += seeds
+    history_of_seeds = [seeds]
 
     for i in range(repetitions):
-        # Witness cascade
-        realizations_per_node, nodes_activated = true_graph.prog_cascade(seeds)
         if verbose:
-            print("\n# Repetition: {}\nn° of nodes activated: {}".format(i, nodes_activated))
-        time += 1
-        # Update representation (est_graph) based on observations
-        for record in realizations_per_node:
-            est_graph.update_estimate(record[0], record[1], time=time, estimator="ucb1")
+            print("\n# Repetition: {}".format(i))
+        # multiple cascades for repetition
+        for j in range(n_cascades):
+            # Witness cascade
+            realizations_per_node, nodes_activated = true_graph.prog_cascade(seeds)
+            time += 1
+            # Update representation (est_graph) based on observations
+            for record in realizations_per_node:
+                est_graph.update_estimate(record[0], record[1], time=time, estimator="ucb1")
 
-        est_graph.update_weights(estimator="ucb1", use_features=False, exp_coeff=B)
+            est_graph.update_weights(estimator="ucb1", use_features=False, exp_coeff=B)
         # Find the best seeds for next repetition
         seeds = est_graph.find_best_seeds(initial_seeds=[], delta=0.4, budget=budget, verbose=False)
-        # Estimate expected reward with new seeds
-        exp_reward.append(sum(true_graph.monte_carlo_sampling(100, seeds)))
-        history_of_seeds += seeds
+        # Update performance statistics (seeds selected, probabilities estimation)
+        history_of_seeds.append(seeds)
+        prob_errors = np.subtract(est_graph.get_edges(), true_graph.get_edges())
+        history_prob_errors.append(prob_errors)
+        cum_prob_error = np.sum(abs(prob_errors))
+        history_cum_error.append(cum_prob_error)
         if verbose:
-            print("best seeds found: {}".format(seeds))
+            print("best seeds found: {}\ncumulative error: {}".format(seeds, cum_prob_error))
 
-    return exp_reward  # , history_of_seeds
+    return {"cum_error": history_cum_error, "prob_errors": history_prob_errors, "seeds": history_of_seeds}
 
 
 if __name__ == '__main__':
+    true_g = g.GraphScaleFree.create_graph100()
+
     # PARAMETERS
     approach = "pessimistic"
-    repetitions = 10
-    budget = 50
-    B = 0.5  # exploration coefficient
-    num_of_experiments = 4
+    repetitions = 15
+    n_cascades = 50
+    budget = true_g.compute_budget(100)
+    B = 0.3  # exploration coefficient
+    num_of_experiments = 1
 
     # CLAIRVOYANT
-    # clairvoyant_best_seeds = true_graph.find_best_seeds(initial_seeds=[], delta=0.05, budget=budget, verbose=False)
-    # exp_clairvoyant_activations = sum(true_graph.monte_carlo_sampling(500, clairvoyant_best_seeds))
+    """
+    clairvoyant_best_seeds = true_graph.find_best_seeds(initial_seeds=[], delta=0.05, budget=budget, verbose=False)
+    exp_clairvoyant_activations = sum(true_graph.monte_carlo_sampling(500, clairvoyant_best_seeds))
+    """
     exp_clairvoyant_activations = 100  # placeholder
     total_seeds = []
 
     # RUN ALL EXPERIMENTS
-    experiments_exp_rewards = Parallel(n_jobs=-1, verbose=11)(  # all cpu are used with -1 (beware of lag)
-        delayed(run_experiment)(approach, repetitions, budget, B, verbose=True) for i in range(num_of_experiments))
+    results = Parallel(n_jobs=1, verbose=11)(  # all cpu are used with -1 (beware of lag)
+        delayed(run_experiment)(approach, repetitions, n_cascades, budget, B, verbose=True) for i in
+        range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 
-    # PLOT REGRET
-    avg_exp_reward = [sum(x) / len(experiments_exp_rewards) for x in zip(*experiments_exp_rewards)]
-    cum_regret = np.cumsum(np.array(exp_clairvoyant_activations) - avg_exp_reward)
+    # PLOT CUMULATIVE ERROR
+    plt.plot(results[0]["cum_error"])  # TODO multiple exps
+    plt.title("Cumulative error")
+    plt.show()
+
+    # PLOT CUMULATIVE REGRET (with respect to clairvoyant expected activations)
+    sel_seeds = results[0]["seeds"]  # TODO multiple exps
+    exp_reward = [sum(true_g.monte_carlo_sampling(1000, seeds)) for seeds in sel_seeds]
+    cum_regret = np.cumsum(np.array(exp_clairvoyant_activations) - exp_reward)
     plt.plot(cum_regret)
+    plt.title("Cumulative activations regret")
+    plt.show()
+
+    # PLOT AVG N° OF ACTIVATED NODES
+    plt.plot(exp_reward)  # TODO multiple exps
+    plt.title("Avg. activated nodes")
     plt.show()
 
     """
@@ -76,11 +103,4 @@ if __name__ == '__main__':
     plt.bar(pos, [x[1] for x in sorted_seeds])
     plt.xticks(pos, [x[0] for x in sorted_seeds])
     plt.show()
-    """
-    """
-    # DIFFERENCE IN PROBABILITIES ESTIMATION
-    difference = abs(np.subtract(est_graph.get_edges(), true_graph.get_edges()))
-    print("Differences in edges estimations and true values:")
-    print(difference)
-    print("Cumulative error: {}".format(np.sum(difference)))
     """
