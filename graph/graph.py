@@ -381,6 +381,8 @@ class GraphScaleFree:
                 print("queue nodes " + str(len(feasible_nodes)) + " - " + "remaining budget " + str(budget) + " ...")
 
             if not randomized_search:
+                nodes_inds.clear()
+                generated_increments.clear()
                 for i in range(len(feasible_nodes)):
 
                     result.append(feasible_nodes[i].id)
@@ -389,11 +391,12 @@ class GraphScaleFree:
                     increment = sum(m_c_probabilities)
                     result.__delitem__(-1)
 
+                    nodes_inds.append(i)
                     if greedy_approach == "standard":
-                        generated_increments[i] = increment
+                        generated_increments.append(increment)
 
                     elif greedy_approach == "cost_based":
-                        generated_increments[i] = increment / feasible_nodes[i].cost
+                        generated_increments.append(increment / feasible_nodes[i].cost)
             else:
                 chosen = set()
                 nnodes = len(feasible_nodes)

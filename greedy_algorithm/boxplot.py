@@ -23,5 +23,5 @@ for v in a:
 ax = sb.boxplot(x, y)
 ax.set_ylabel("Influenced Nodes")
 ax.set_xlabel("Delta")
-ax.set_title("Influence Maximization - Greedy Algorithm - Graph 100 Nodes")
+ax.set_title("Influence Maximization - Greedy Algorithm - Graph 1000 Nodes")
 mplt.show()
