@@ -147,6 +147,15 @@ class GraphScaleFree:
 
         self.randstate = randomstate
 
+    def convert_to_complete(self):
+        for n1 in self.nodes:
+            for n2 in self.nodes:
+                if n2.id > n1.id and n2 not in n1.adjacency_list:
+                    n1.attach(n2)
+                    n2.attach(n1)
+
+        self.init_estimates(estimator="ucb1", approach="pessimistic")
+
     def set_lin_comb_params(self, pars=None):
         self.lin_comb_params = pars if pars is not None else [p for p in GraphScaleFree.LIN_COMB_PARAMS]
 
@@ -269,26 +278,43 @@ class GraphScaleFree:
             cg += costs[i]
         return np.power(0.4 * cg, 1 + 0.5 / np.log2(cg))
 
-    def propagate_cascade(self):
+    def propagate_cascade(self, use_for_edge_estimator=False):
+        result = []
+        result_elem_seeds = []
+        result_elem = []
         self.prepare_for_cascade()
         node_to_be_expanded = []
         # Starting from seeds, it activates all the node corresponding to live edges
         for node in self.nodes:
             if node.isSeed():
+                result_elem_seeds.append(node.id)
                 for i in range(len(node.adjacency_list)):
                     if (node.adjacency_list[i].isSuceptible()) & (not node.adjacency_list[i].isSeed()) & (
                             node.adjacency_live[i] == 1):
                         node.adjacency_list[i].setActive()
                         node_to_be_expanded.append(node.adjacency_list[i])
+                        result_elem.append(node.adjacency_list[i].id)
+        result.append(result_elem_seeds.copy())
+        result.append(result_elem.copy())
+        previous_result_elem = result_elem.copy()
+        result_elem.clear()
         # For all the live edges, spreads the activation to all the neighbours
         while len(node_to_be_expanded) > 0:
             target_node = node_to_be_expanded.pop(0)
+            previous_result_elem.pop(0)
             for i in range(len(target_node.adjacency_list)):
                 if (target_node.adjacency_list[i].isSuceptible()) and (not target_node.adjacency_list[i].isSeed()) and \
                         (target_node.adjacency_live[i] == 1):
                     target_node.adjacency_list[i].setActive()
                     node_to_be_expanded.append(target_node.adjacency_list[i])
+                    result_elem.append(target_node.adjacency_list[i].id)
             target_node.setInactive()
+            if len(previous_result_elem) == 0:
+                previous_result_elem = result_elem.copy()
+                result.append(result_elem.copy())
+                result_elem.clear()
+        if use_for_edge_estimator:
+            return result
 
     def monte_carlo_sampling(self, number_of_iterations, seeds):
         for n in self.nodes:

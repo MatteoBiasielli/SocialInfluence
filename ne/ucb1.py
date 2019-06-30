@@ -3,13 +3,17 @@ from collections import Counter
 import graph.graph as g
 import numpy as np
 import operator
+from joblib import Parallel, delayed
 
 
-def run_experiment(approach, repetitions, budget, B, clairvoyant):
+def run_experiment(approach, repetitions, budget, B, verbose=True):
     # INITIALIZATION
+    true_graph = g.GraphScaleFree.create_graph100()
+    est_graph = g.GraphScaleFree.create_graph100()
+
     est_graph.init_estimates(estimator="ucb1", approach=approach)
     time = 1
-    regret = [clairvoyant for _ in range(repetitions)]
+    exp_reward = []
 
     # Buy seed based on model
     history_of_seeds = []
@@ -17,62 +21,52 @@ def run_experiment(approach, repetitions, budget, B, clairvoyant):
     history_of_seeds += seeds
 
     for i in range(repetitions):
-        print("\n# Repetition: " + str(i))
         # Witness cascade
         realizations_per_node, nodes_activated = true_graph.prog_cascade(seeds)
-        print("n° of nodes activated: {}".format(nodes_activated))
+        if verbose:
+            print("\n# Repetition: {}\nn° of nodes activated: {}".format(i, nodes_activated))
         time += 1
-        # Compute regret
-        exp_activations = sum(true_graph.monte_carlo_sampling(500, seeds))
-        regret[i] = regret[i] - exp_activations
         # Update representation (est_graph) based on observations
         for record in realizations_per_node:
             est_graph.update_estimate(record[0], record[1], time=time, estimator="ucb1")
 
         est_graph.update_weights(estimator="ucb1", use_features=False, exp_coeff=B)
-
         # Find the best seeds for next repetition
-        seeds = est_graph.find_best_seeds(initial_seeds=[], delta=0.8, budget=budget, verbose=False)
-        print("best seeds found: {}".format(seeds))
+        seeds = est_graph.find_best_seeds(initial_seeds=[], delta=0.4, budget=budget, verbose=False)
+        # Estimate expected reward with new seeds
+        exp_reward.append(sum(true_graph.monte_carlo_sampling(100, seeds)))
         history_of_seeds += seeds
+        if verbose:
+            print("best seeds found: {}".format(seeds))
 
-    final_n_of_nodes_activated = true_graph.prog_cascade(seeds)[1]
-    print("\nFinal num. of nodes activated: {}".format(final_n_of_nodes_activated))
-
-    return regret, history_of_seeds
+    return exp_reward  # , history_of_seeds
 
 
 if __name__ == '__main__':
-
     # PARAMETERS
     approach = "pessimistic"
-    repetitions = 100
+    repetitions = 10
     budget = 50
     B = 0.5  # exploration coefficient
-    num_of_experiments = 10
+    num_of_experiments = 4
 
-    true_graph = g.GraphScaleFree.create_graph100()
-    est_graph = g.GraphScaleFree.create_graph100()
-
-    # CLAIRVOYANT (maybe node 6 with circa 50 exp activations?)
-    clairvoyant_best_seeds = true_graph.find_best_seeds(initial_seeds=[], delta=0.05, budget=budget, verbose=False)
-    exp_clairvoyant_activations = sum(true_graph.monte_carlo_sampling(500, clairvoyant_best_seeds))
-    avg_regret = []
+    # CLAIRVOYANT
+    # clairvoyant_best_seeds = true_graph.find_best_seeds(initial_seeds=[], delta=0.05, budget=budget, verbose=False)
+    # exp_clairvoyant_activations = sum(true_graph.monte_carlo_sampling(500, clairvoyant_best_seeds))
+    exp_clairvoyant_activations = 100  # placeholder
     total_seeds = []
 
     # RUN ALL EXPERIMENTS
-    for i in range(num_of_experiments):
-        exp_regret, selected_seeds = run_experiment(approach, repetitions, budget, B,
-                                                    clairvoyant=exp_clairvoyant_activations)
-        avg_regret.append(exp_regret)
-        total_seeds += selected_seeds
+    experiments_exp_rewards = Parallel(n_jobs=-1, verbose=11)(  # all cpu are used with -1 (beware of lag)
+        delayed(run_experiment)(approach, repetitions, budget, B, verbose=True) for i in range(num_of_experiments))
 
     # PLOT REGRET
-    regret_to_plot = [sum(x) / len(avg_regret) for x in zip(*avg_regret)]
-    plt.plot([0 for _ in range(repetitions)], "--k")
-    plt.plot(regret_to_plot)
+    avg_exp_reward = [sum(x) / len(experiments_exp_rewards) for x in zip(*experiments_exp_rewards)]
+    cum_regret = np.cumsum(np.array(exp_clairvoyant_activations) - avg_exp_reward)
+    plt.plot(cum_regret)
     plt.show()
 
+    """
     # PLOT MOST SELECTED SEEDS
     seed_popularity = Counter(total_seeds)
     sorted_seeds = sorted(seed_popularity.items(), key=operator.itemgetter(1))
@@ -82,6 +76,7 @@ if __name__ == '__main__':
     plt.bar(pos, [x[1] for x in sorted_seeds])
     plt.xticks(pos, [x[0] for x in sorted_seeds])
     plt.show()
+    """
     """
     # DIFFERENCE IN PROBABILITIES ESTIMATION
     difference = abs(np.subtract(est_graph.get_edges(), true_graph.get_edges()))
