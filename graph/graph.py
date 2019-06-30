@@ -468,9 +468,9 @@ class GraphScaleFree:
                 elif estimator == "ts":
                     i.ts_estimate_param = [[1, 1] for _ in range(i.degree)]
 
-    def update_estimate(self, id_from, realizations, time, estimator="ucb1"):
+    def update_estimate(self, id_from, realizations, time=None, estimator="ucb1"):
         """Updates the parameters of each edge of the specified node"""
-        if estimator == "ucb1":
+        if estimator == "ucb1" and time is not None:
             estimate_param = self.nodes[id_from].ucb1_estimate_param
 
             for i in range(len(realizations)):
