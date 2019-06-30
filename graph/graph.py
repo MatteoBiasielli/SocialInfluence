@@ -72,16 +72,16 @@ class Node:
     def removeSeed(self):
         self.seed = False
 
-    def sort_probabilities(self, seed, adj_matrix, common_args, lin_comb_params):
+    def sort_probabilities(self, seed, adj_matrix, common_args, lin_comb_params, maxdeg):
         for i in range(self.degree):
-            feats = [sigmoid(0.2 * (self.degree / self.adjacency_list[i].degree - 1)),
-                     seed.rand(),
-                     self.n_common_neighbors(self.adjacency_list[i], adj_matrix) / self.adjacency_list[i].degree,
-                     common_args[self.id][self.adjacency_list[i].id]]
-            self.adjacency_weights[i] = lin_comb_params[0] * feats[0] + \
-                                        lin_comb_params[1] * feats[1] + \
-                                        lin_comb_params[2] * feats[2] + \
-                                        lin_comb_params[3] * feats[3]
+            feats = [min(sigmoid(0.1 * (self.degree / self.adjacency_list[i].degree - 1)) * self.degree / maxdeg, 1),
+                     min(seed.rand() * 3 * self.degree / maxdeg, 1),
+                     min((self.n_common_neighbors(self.adjacency_list[i], adj_matrix) / self.adjacency_list[i].degree) * self.degree / maxdeg, 1),
+                     min(common_args[self.id][self.adjacency_list[i].id] * 3 * self.degree / maxdeg, 1)]
+            self.adjacency_weights[i] = (lin_comb_params[0] * feats[0] +
+                                        lin_comb_params[1] * feats[1] +
+                                        lin_comb_params[2] * feats[2] +
+                                        lin_comb_params[3] * feats[3])
             self.adjacency_features.append(feats)
 
     def update_probabilities(self, lin_comb_params):
@@ -143,6 +143,7 @@ class GraphScaleFree:
                             break
             self.nodes.append(newnode)
             self.num_nodes += 1
+            self.maxdegree = max([n.degree for n in self.nodes])
 
         self.randstate = randomstate
 
@@ -154,7 +155,7 @@ class GraphScaleFree:
 
     def sort_probabilities(self):
         for n in self.nodes:
-            n.sort_probabilities(self.randstate, self.adj_matr, self.common_args, self.lin_comb_params)
+            n.sort_probabilities(self.randstate, self.adj_matr, self.common_args, self.lin_comb_params, self.maxdegree)
 
     def update_probabilities(self):
         for n in self.nodes:
@@ -190,7 +191,7 @@ class GraphScaleFree:
     def assign_nodes_costs(self):
         maxdeg = np.max([n.degree for n in self.nodes])
         for n in self.nodes:
-            n.cost = 10 + (n.degree ** (2 - 0.5 * n.degree / maxdeg)) * np.mean(n.adjacency_weights)
+            n.cost = 30 + 50/n.degree + (n.degree ** (2 - 0.5 * n.degree / maxdeg)) * np.mean(n.adjacency_weights)
 
     def print_costs_degrees(self):
         degrees = []
@@ -314,12 +315,13 @@ class GraphScaleFree:
         return result
 
     def find_best_seeds(self, initial_seeds, budget=None, greedy_approach="standard", delta=0.25, epsilon=0.1,
-                        file_name="", verbose=True):
+                        file_name="", verbose=True, randomized_search=False, randomized_search_number=10):
         # self.assign_nodes_costs()
         feasible_nodes = []
         generated_increments = []
         result = []
         deletion_indexes = []
+        nodes_inds = []
 
         for i in range(len(self.nodes)):
             feasible_nodes.append(self.nodes[i])
@@ -352,22 +354,50 @@ class GraphScaleFree:
             if verbose:
                 print("queue nodes " + str(len(feasible_nodes)) + " - " + "remaining budget " + str(budget) + " ...")
 
-            for i in range(len(feasible_nodes)):
+            if not randomized_search:
+                for i in range(len(feasible_nodes)):
 
-                result.append(feasible_nodes[i].id)
-                m_c_sampling_iterations = int((1 / (epsilon**2)) * np.log(len(result) + 1) * np.log(1 / delta))
-                m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
-                increment = sum(m_c_probabilities)
-                result.__delitem__(-1)
+                    result.append(feasible_nodes[i].id)
+                    m_c_sampling_iterations = int((1 / (epsilon**2)) * np.log(len(result) + 1) * np.log(1 / delta))
+                    m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
+                    increment = sum(m_c_probabilities)
+                    result.__delitem__(-1)
 
-                if greedy_approach == "standard":
-                    generated_increments[i] = increment
+                    if greedy_approach == "standard":
+                        generated_increments[i] = increment
 
-                elif greedy_approach == "cost_based":
-                    generated_increments[i] = increment / feasible_nodes[i].cost
+                    elif greedy_approach == "cost_based":
+                        generated_increments[i] = increment / feasible_nodes[i].cost
+            else:
+                chosen = set()
+                nnodes = len(feasible_nodes)
+                nodes_inds.clear()
+                generated_increments.clear()
+                for _ in range(min(randomized_search_number, nnodes)):
+
+                    i = None
+                    while i is None or i in chosen:
+                        i = np.random.randint(0, nnodes)
+                        if i == nnodes:
+                            i -= 1
+
+                    chosen.add(i)
+                    result.append(feasible_nodes[i].id)
+                    m_c_sampling_iterations = int((1 / (epsilon ** 2)) * np.log(len(result) + 1) * np.log(1 / delta))
+                    m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
+                    increment = sum(m_c_probabilities)
+                    result.pop(-1)
+
+                    nodes_inds.append(i)
+                    if greedy_approach == "standard":
+                        generated_increments.append(increment)
+
+                    elif greedy_approach == "cost_based":
+                        generated_increments.append(increment / feasible_nodes[i].cost)
+
 
             winner_index = np.argmax(generated_increments)
-            winner_node = feasible_nodes[int(winner_index)]
+            winner_node = feasible_nodes[nodes_inds[int(winner_index)]]
             result.append(winner_node.id)
             budget -= winner_node.cost
 
@@ -383,7 +413,6 @@ class GraphScaleFree:
             deletion_indexes.sort(reverse=True)
             for index in deletion_indexes:
                 feasible_nodes.__delitem__(index)
-                generated_increments.__delitem__(index)
 
             deletion_indexes.clear()
 
