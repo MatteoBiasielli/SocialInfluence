@@ -267,16 +267,14 @@ class GraphScaleFree:
                 result.append(node.id)
         return result
 
-    def compute_budget(self):
-        costs = []
-        for node in self.nodes:
-            costs.append(node.cost)
-        costs.sort(reverse=True)
-        num_of_considered_nodes = int(0.1 * len(self.nodes))
-        cg = 0
-        for i in range(0, num_of_considered_nodes):
-            cg += costs[i]
-        return np.power(0.4 * cg, 1 + 0.5 / np.log2(cg))
+    def compute_budget(self, n):
+        if n == 100:
+            return 400
+        if n == 1000:
+            return 800
+        if n == 10000:
+            return 2000
+        raise NotImplementedError("Parameter n must be 100, 1000 or 10000")
 
     def propagate_cascade(self, use_for_edge_estimator=False):
         result = []
