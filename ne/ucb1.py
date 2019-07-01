@@ -6,10 +6,6 @@ import operator
 from joblib import Parallel, delayed
 
 
-def avg_errors(exp_results: list, name: str) -> list:
-    pass
-
-
 def run_experiment(approach, repetitions, stimulations, budget, B, verbose=True) -> dict:
     # INITIALIZATION
     true_graph = g.GraphScaleFree.create_graph100()
@@ -35,12 +31,12 @@ def run_experiment(approach, repetitions, stimulations, budget, B, verbose=True)
                 est_graph.update_estimate(record[0], record[1], time=time, estimator="ucb1")
 
         # Update weights (edges probabilities)
-        est_graph.update_weights(estimator="ucb1", use_features=False, exp_coeff=B)
+        est_graph.update_weights(estimator="ucb1", use_features=False, exp_coeff=B, manage_probs_with="clamping")
         # Find the best seeds for next repetition
         seeds = est_graph.find_best_seeds(initial_seeds=[], budget=budget, verbose=False)
         # Update performance statistics (seeds selected, probabilities estimation)
         history_of_seeds.append(seeds)
-        prob_errors = np.subtract(est_graph.get_edges(), true_graph.get_edges())
+        prob_errors = np.subtract(true_graph.get_edges(), est_graph.get_empirical_means())
         history_prob_errors.append(prob_errors)
         cum_prob_error = np.sum(abs(prob_errors))
         history_cum_error.append(cum_prob_error)
@@ -56,10 +52,10 @@ if __name__ == '__main__':
     # PARAMETERS
     approach = "pessimistic"
     repetitions = 10  # should be at least 10
-    stimulations = 20  # should be 10 or 20
+    stimulations = 100  # should be 10 or 20
     budget = true_g.compute_budget(100)
     B = 0.3  # exploration coefficient
-    num_of_experiments = 20  # should be 20
+    num_of_experiments = 3  # should be 20
 
     # CLAIRVOYANT
     """
@@ -70,7 +66,7 @@ if __name__ == '__main__':
     total_seeds = []
 
     # RUN ALL EXPERIMENTS
-    results = Parallel(n_jobs=2, verbose=11)(  # all cpu are used with -1 (beware of lag)
+    results = Parallel(n_jobs=-2, verbose=11)(  # all cpu are used with -1 (beware of lag)
         delayed(run_experiment)(approach, repetitions, stimulations, budget, B, verbose=True) for i in
         range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 

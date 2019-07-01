@@ -504,7 +504,7 @@ class GraphScaleFree:
                     estimate_param[i][0] += realizations[i]
                     estimate_param[i][1] += 1 - realizations[i]
 
-    def update_weights(self, estimator="ucb1", use_features=False, exp_coeff=1):
+    def update_weights(self, estimator="ucb1", use_features=False, exp_coeff=1, manage_probs_with="normalization"):
         """Updates the estimated probabilities of each edge in the graph (weights)"""
         if estimator == "ucb1":
             all_weights = []
@@ -513,14 +513,17 @@ class GraphScaleFree:
                     # new weight = sum of empirical mean and exploration coeff. * ucb1 bound
                     new_weight = node.ucb1_estimate_param[i][0] + exp_coeff * \
                                                 node.ucb1_estimate_param[i][1]
+                    if manage_probs_with == "clamping" and new_weight > 1:
+                        new_weight = 1
                     node.adjacency_weights[i] = new_weight
                     all_weights.append(node.adjacency_weights[i])
 
-            # normalize all weights
-            for node in self.nodes:
-                for i in range(node.degree):
-                    node.adjacency_weights[i] = (node.adjacency_weights[i] - min(all_weights)) / (
-                            max(all_weights) - min(all_weights))
+            if manage_probs_with == "normalization":
+                # normalize all weights
+                for node in self.nodes:
+                    for i in range(node.degree):
+                        node.adjacency_weights[i] = (node.adjacency_weights[i] - min(all_weights)) / (
+                                max(all_weights) - min(all_weights))
 
         elif estimator == "ts":
             for node in self.nodes:
