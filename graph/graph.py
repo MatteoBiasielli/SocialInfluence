@@ -345,7 +345,7 @@ class GraphScaleFree:
             feasible_nodes.append(self.nodes[i])
             generated_increments.append(0)
 
-        budget = self.compute_budget() if budget is None else budget
+        budget = self.compute_budget(len(self.nodes)) if budget is None else budget
 
         for seed in initial_seeds:
             result.append(self.nodes[seed].id)
@@ -381,6 +381,9 @@ class GraphScaleFree:
                     m_c_sampling_iterations = int((1 / (epsilon**2)) * np.log(len(result) + 1) * np.log(1 / delta))
                     m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
                     increment = sum(m_c_probabilities)
+                    total_cost = 0
+                    for node in result:
+                        total_cost += self.nodes[node].cost
                     result.__delitem__(-1)
 
                     nodes_inds.append(i)
@@ -388,7 +391,10 @@ class GraphScaleFree:
                         generated_increments.append(increment)
 
                     elif greedy_approach == "cost_based":
-                        generated_increments.append(increment / feasible_nodes[i].cost)
+                        generated_increments.append(increment / total_cost)
+
+                    else:
+                        generated_increments.append(increment)
             else:
                 chosen = set()
                 nnodes = len(feasible_nodes)
@@ -407,6 +413,9 @@ class GraphScaleFree:
                     m_c_sampling_iterations = int((1 / (epsilon ** 2)) * np.log(len(result) + 1) * np.log(1 / delta))
                     m_c_probabilities = self.monte_carlo_sampling(m_c_sampling_iterations, seeds=result)
                     increment = sum(m_c_probabilities)
+                    total_cost = 0
+                    for node in result:
+                        total_cost += self.nodes[node].cost
                     result.pop(-1)
 
                     nodes_inds.append(i)
@@ -414,8 +423,10 @@ class GraphScaleFree:
                         generated_increments.append(increment)
 
                     elif greedy_approach == "cost_based":
-                        generated_increments.append(increment / feasible_nodes[i].cost)
+                        generated_increments.append(increment / total_cost)
 
+                    else:
+                        generated_increments.append(increment)
 
             winner_index = np.argmax(generated_increments)
             winner_node = feasible_nodes[nodes_inds[int(winner_index)]]
