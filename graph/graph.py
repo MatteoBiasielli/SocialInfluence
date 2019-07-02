@@ -147,12 +147,31 @@ class GraphScaleFree:
 
         self.randstate = randomstate
 
-    def convert_to_complete(self):
+    def get_initial_random_nodes(self):
+        budget = self.compute_budget(len(self.nodes))
+        feasible_nodes_ids = [x.id for x in self.nodes].copy()
+        result = []
+
+        while len(feasible_nodes_ids) > 0:
+            target = np.random.choice(feasible_nodes_ids)
+            feasible_nodes_ids.__delitem__(feasible_nodes_ids.index(target))
+            if budget - self.nodes[target].cost > 0:
+                budget -= self.nodes[target].cost
+                result.append(target)
+        return result
+
+    def convert_to_complete(self, edges_value=0):
         for n1 in self.nodes:
             for n2 in self.nodes:
-                if n2.id > n1.id and n2 not in n1.adjacency_list:
-                    n1.attach(n2)
-                    n2.attach(n1)
+                if n2.id > n1.id:
+                    if n2 not in n1.adjacency_list:
+                        n1.attach(n2, prob=edges_value)
+                        n2.attach(n1, prob=edges_value)
+                    else:
+                        n1.adjacency_weights[n1.adjacency_list.index(n2)] = edges_value
+                        n2.adjacency_weights[n2.adjacency_list.index(n1)] = edges_value
+
+            n1.adjacency_list.sort(key=lambda x: x.id)
 
         self.init_estimates(estimator="ucb1", approach="pessimistic")
 
@@ -306,7 +325,14 @@ class GraphScaleFree:
                 result.append(result_elem.copy())
                 result_elem.clear()
         if use_for_edge_estimator:
+            for sublist in result:
+                sublist.sort()
             return result
+
+    def reset_all_seeds(self):
+        for node in self.nodes:
+            if node.isSeed():
+                node.removeSeed()
 
     def monte_carlo_sampling(self, number_of_iterations, seeds):
         for n in self.nodes:
@@ -352,7 +378,7 @@ class GraphScaleFree:
             budget -= self.nodes[seed].cost
 
         if budget < 0:
-            print("The initial seeds exceed the available budget (" + str(self.compute_budget()) +
+            print("The initial seeds exceed the available budget (" + str(self.compute_budget(len(self.nodes))) +
                   ". Try again with a cheaper initial seed set.")
             return
 
@@ -428,8 +454,9 @@ class GraphScaleFree:
                     else:
                         generated_increments.append(increment)
 
-            winner_index = np.argmax(generated_increments)
-            winner_node = feasible_nodes[nodes_inds[int(winner_index)]]
+            array = np.array(generated_increments)
+            winner_index = [np.random.choice(np.flatnonzero(array == array.max())) for i in range(1)]
+            winner_node = feasible_nodes[nodes_inds[winner_index[0]]]
             result.append(winner_node.id)
             budget -= winner_node.cost
 
@@ -504,7 +531,7 @@ class GraphScaleFree:
                     estimate_param[i][0] += realizations[i]
                     estimate_param[i][1] += 1 - realizations[i]
 
-    def update_weights(self, estimator="ucb1", use_features=False, exp_coeff=1):
+    def update_weights(self, estimator="ucb1", use_features=False, exp_coeff=1, normalize=True):
         """Updates the estimated probabilities of each edge in the graph (weights)"""
         if estimator == "ucb1":
             all_weights = []
@@ -517,10 +544,16 @@ class GraphScaleFree:
                     all_weights.append(node.adjacency_weights[i])
 
             # normalize all weights
-            for node in self.nodes:
-                for i in range(node.degree):
-                    node.adjacency_weights[i] = (node.adjacency_weights[i] - min(all_weights)) / (
-                            max(all_weights) - min(all_weights))
+            if normalize:
+                for node in self.nodes:
+                    for i in range(node.degree):
+                        node.adjacency_weights[i] = (node.adjacency_weights[i] - min(all_weights)) / (
+                                max(all_weights) - min(all_weights))
+            else:
+                for node in self.nodes:
+                    for i in range(len(node.adjacency_weights)):
+                        if node.adjacency_weights[i] > 1:
+                            node.adjacency_weights[i] = 1
 
         elif estimator == "ts":
             for node in self.nodes:
