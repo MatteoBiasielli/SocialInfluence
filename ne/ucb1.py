@@ -6,19 +6,21 @@ import operator
 from joblib import Parallel, delayed
 
 
-def run_experiment(approach, repetitions, stimulations, budget, B, verbose=True) -> dict:
+def run_experiment(approach, repetitions, stimulations, B, delta, use_features=False, verbose=True) -> dict:
     # INITIALIZATION
     true_graph = g.GraphScaleFree.create_graph100()
     est_graph = g.GraphScaleFree.create_graph100()
 
     est_graph.init_estimates(estimator="ucb1", approach=approach)
     time = 1
+
     history_cum_error = []
     history_prob_errors = []
+    history_of_seeds = []
 
     # Buy seed based on model
+    budget = true_graph.compute_budget(100)
     seeds, remainder = true_graph.seeds_at_time_zero(budget)
-    history_of_seeds = [seeds]
 
     for i in range(repetitions):
         # Multiple stimulations of the network
@@ -31,9 +33,9 @@ def run_experiment(approach, repetitions, stimulations, budget, B, verbose=True)
                 est_graph.update_estimate(record[0], record[1], time=time, estimator="ucb1")
 
         # Update weights (edges probabilities)
-        est_graph.update_weights(estimator="ucb1", use_features=False, exp_coeff=B, manage_probs_with="clamping")
+        est_graph.update_weights(estimator="ucb1", use_features=use_features, exp_coeff=B, normalize=False)
         # Find the best seeds for next repetition
-        seeds = est_graph.find_best_seeds(initial_seeds=[], budget=budget, verbose=False)
+        seeds = est_graph.find_best_seeds(initial_seeds=[], delta=delta, budget=budget, verbose=False)
         # Update performance statistics (seeds selected, probabilities estimation)
         history_of_seeds.append(seeds)
         prob_errors = np.subtract(true_graph.get_edges(), est_graph.get_empirical_means())
@@ -51,23 +53,22 @@ if __name__ == '__main__':
 
     # PARAMETERS
     approach = "pessimistic"
-    repetitions = 10  # should be at least 10
-    stimulations = 100  # should be 10 or 20
-    budget = true_g.compute_budget(100)
-    B = 0.3  # exploration coefficient
-    num_of_experiments = 3  # should be 20
+    repetitions = 20  # should be at least 10
+    stimulations = 100
+    B = 0.2  # exploration coefficient
+    delta = 0.4  # should be 0.2, 0.4, 0.8, 0.95
+    num_of_experiments = 20  # should be 20
+    use_features = False
 
     # CLAIRVOYANT
-    """
-    clairvoyant_best_seeds = true_graph.find_best_seeds(initial_seeds=[], delta=0.05, budget=budget, verbose=False)
-    exp_clairvoyant_activations = sum(true_graph.monte_carlo_sampling(500, clairvoyant_best_seeds))
-    """
-    exp_clairvoyant_activations = 100  # placeholder
+    clairvoyant_best_seeds = true_g.find_best_seeds(initial_seeds=[], delta=0.1, verbose=False)
+    exp_clairvoyant_activations = sum(true_g.monte_carlo_sampling(1000, clairvoyant_best_seeds))
+
     total_seeds = []
 
     # RUN ALL EXPERIMENTS
     results = Parallel(n_jobs=-2, verbose=11)(  # all cpu are used with -1 (beware of lag)
-        delayed(run_experiment)(approach, repetitions, stimulations, budget, B, verbose=True) for i in
+        delayed(run_experiment)(approach, repetitions, stimulations, B, delta, use_features, verbose=True) for i in
         range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 
     # PLOT CUMULATIVE ERROR
