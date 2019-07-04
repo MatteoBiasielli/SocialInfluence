@@ -25,12 +25,24 @@ class Node:
         self.degree = 0
         self.id = Node.count_id
         Node.count_id += 1
+        self.unattached_nodes_ids = []  # Used for edges estimation
 
     def attach(self, node, prob=1):
         self.adjacency_list.append(node)
         self.adjacency_weights.append(prob)
         self.adjacency_live.append(0)
         self.degree += 1
+
+    def unattach(self, node_index, verbose=False):
+        self.unattached_nodes_ids.append(self.adjacency_list[node_index].id)
+        if verbose:
+            print("Node " + str(self.adjacency_list[node_index].id) + " unattached from node " + str(self.id) + ".")
+        self.adjacency_list.__delitem__(node_index)
+        self.adjacency_weights.__delitem__(node_index)
+        self.adjacency_live.__delitem__(node_index)
+        self.degree -= 1
+        self.unattached_nodes_ids.sort(reverse=True)
+        self.ucb1_estimate_param.__delitem__(node_index)
 
     def isSeed(self):
         return self.seed
@@ -288,6 +300,12 @@ class GraphScaleFree:
         if n == 10000:
             return 2000
         raise NotImplementedError("Parameter n must be 100, 1000 or 10000")
+
+    def execute_cut_procedure(self, weight_treshold, verbose=False):
+        for node in self.nodes:
+            for i in range(-node.degree, 0):
+                if node.adjacency_weights[i] < weight_treshold:
+                    node.unattach(i, verbose=verbose)
 
     def propagate_cascade(self, use_for_edge_estimator=False):
         result = []
