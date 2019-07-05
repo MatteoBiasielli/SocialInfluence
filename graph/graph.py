@@ -98,10 +98,10 @@ class Node:
 
     def update_probabilities(self, lin_comb_params):
         for i in range(self.degree):
-            self.adjacency_weights[i] = lin_comb_params[0] * self.adjacency_features[0] + \
-                                        lin_comb_params[1] * self.adjacency_features[1] + \
-                                        lin_comb_params[2] * self.adjacency_features[2] + \
-                                        lin_comb_params[3] * self.adjacency_features[3]
+            self.adjacency_weights[i] = max(0, min(1, lin_comb_params[0] * self.adjacency_features[i][0] + \
+                                        lin_comb_params[1] * self.adjacency_features[i][1] + \
+                                        lin_comb_params[2] * self.adjacency_features[i][2] + \
+                                        lin_comb_params[3] * self.adjacency_features[i][3]))
 
     def n_common_neighbors(self, node, adj_matr):
         return np.dot(adj_matr[self.id, :], adj_matr[node.id, :])
@@ -581,7 +581,7 @@ class GraphScaleFree:
 
         if use_features:
             self.set_lin_comb_params(self.estimate_features_parameters())
-            self.sort_probabilities()
+            self.update_probabilities()
 
     def estimate_features_parameters(self):
         dataset_x = []
