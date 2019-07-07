@@ -1,0 +1,7 @@
+# EXPLORATION COEFFICIENT (UCB1):
+
+The following values have been tested: 0.2, 0.4, 0.6, 0.8, 1
+All the configurations were tested averaging 10 experiments, with delta=0.4, 10 repetitions of 100 stimulations each (graph of 100 nodes).
+The linearity of the features is not used.
+
+For the best value (B=0.2) we tested also the "optimistic" initialization.
