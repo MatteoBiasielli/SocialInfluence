@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from joblib import Parallel, delayed
+import csv
 
 import graph.graph as g
 
@@ -46,7 +47,7 @@ def run_experiment(approach, repetitions, stimulations, B, delta, use_features=F
         # Update performance statistics (seeds selected, probabilities estimation)
         history_of_seeds.append(seeds)
         prob_errors = np.subtract(true_graph.get_edges(), est_graph.get_empirical_means())
-        history_prob_errors.append(prob_errors)
+        history_prob_errors.append(abs(prob_errors))
         cum_prob_error = np.sum(abs(prob_errors))
         history_cum_error.append(cum_prob_error)
         if verbose:
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     B = 0.2  # exploration coefficient
     repetitions = 10  # should be at least 10
     stimulations = 100
-    delta = 0.4  # should be 0.2, 0.4, 0.8, 0.95
+    delta = 0.95  # should be 0.2, 0.4, 0.8, 0.95
     num_of_experiments = 20  # should be 20
     use_features = False
 
@@ -81,6 +82,7 @@ if __name__ == '__main__':
         delayed(run_experiment)(approach, repetitions, stimulations, B, delta, use_features, verbose=True) for i in
         range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 
+    """
     # PLOT CUMULATIVE ERROR
     cum_errors = [result["cum_error"] for result in results]
     avg_cum_error = [sum(x) / len(cum_errors) for x in zip(*cum_errors)]
@@ -88,7 +90,7 @@ if __name__ == '__main__':
     plt.title("Cumulative error")
     # plt.savefig("cum_err.png", dpi=200)
     plt.show()
-
+    """
     # PLOT CUMULATIVE REGRET (with respect to clairvoyant expected activations)
     exp_rewards = []
     for exp in range(len(results)):  # for each experiment compute list of rewards
@@ -109,9 +111,20 @@ if __name__ == '__main__':
     plt.show()
 
     # SAVE RESULTS IN FILES
-    save_results(avg_cum_error,
-                 "results/ucb1_exp_coeff/ucb1_no_feats_100nodes_{}repetitions_{}stimulations_delta{}_B{}_optimistic_differences.csv".format(
-                     repetitions, stimulations, delta, B))
-    save_results(avg_exp_rewards,
-                 "results//ucb1_exp_coeff/ucb1_no_feats_100nodes_{}repetitions_{}stimulations_delta{}_B{}_optimistic_performance.csv".format(
-                     repetitions, stimulations, delta, B))
+    save_subname = "feats" if use_features else "no_feats"
+    for exp in range(len(results)):
+
+        # save differences
+        differences = results[exp]["prob_errors"]
+        with open("results/ucb1_" + save_subname + "_100nodes_" + str(repetitions) + "repetitions" + str(
+                stimulations) + "stimulations_delta" + str(delta) + "__exp" + str(exp) + "_differences.csv",
+                  "w") as writeFile:
+            writer = csv.writer(writeFile)
+            for data in differences:
+                writer.writerow(data)
+        writeFile.close()
+
+        # save activations
+        save_results(exp_rewards[exp],
+                     "results/ucb1_" + save_subname + "_100nodes_{}repetitions_{}stimulations_delta{}_exp{}_performance.csv".format(
+                         repetitions, stimulations, delta, exp))
