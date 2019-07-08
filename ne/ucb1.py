@@ -66,7 +66,7 @@ if __name__ == '__main__':
     stimulations = 10
     delta = 0.95  # should be 0.2, 0.4, 0.8, 0.95
     num_of_experiments = 20  # should be 20
-    use_features = True
+    use_features = False
 
     # CLAIRVOYANT
     """
@@ -126,5 +126,5 @@ if __name__ == '__main__':
 
         # save activations
         save_results(exp_rewards[exp],
-                     "results/ucb1_" + save_subname + "_100nodes_{}repetitions_{}stimulations_delta{}_exp{}_performance.csv".format(
+                     "results/ucb1_" + save_subname + "_100nodes_{}repetitions{}stimulations_delta{}_exp{}_performance.csv".format(
                          repetitions, stimulations, delta, exp))
