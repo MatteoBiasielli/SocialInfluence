@@ -1,9 +1,17 @@
 import matplotlib.pyplot as plt
-from collections import Counter
-import graph.graph as g
 import numpy as np
-import operator
 from joblib import Parallel, delayed
+import csv
+
+import graph.graph as g
+
+
+def save_results(values: list, filename: str):
+    with open(filename, 'w') as f:
+        f.write("%f" % values[0])
+        values.pop(0)
+        for value in values:
+            f.write(",%f" % value)
 
 
 def run_experiment(approach, repetitions, stimulations, B, delta, use_features=False, verbose=True) -> dict:
@@ -39,7 +47,7 @@ def run_experiment(approach, repetitions, stimulations, B, delta, use_features=F
         # Update performance statistics (seeds selected, probabilities estimation)
         history_of_seeds.append(seeds)
         prob_errors = np.subtract(true_graph.get_edges(), est_graph.get_empirical_means())
-        history_prob_errors.append(prob_errors)
+        history_prob_errors.append(abs(prob_errors))
         cum_prob_error = np.sum(abs(prob_errors))
         history_cum_error.append(cum_prob_error)
         if verbose:
@@ -53,31 +61,36 @@ if __name__ == '__main__':
 
     # PARAMETERS
     approach = "pessimistic"
-    repetitions = 20  # should be at least 10
-    stimulations = 100
     B = 0.2  # exploration coefficient
-    delta = 0.4  # should be 0.2, 0.4, 0.8, 0.95
+    repetitions = 10  # should be at least 10
+    stimulations = 100
+    delta = 0.95  # should be 0.2, 0.4, 0.8, 0.95
     num_of_experiments = 20  # should be 20
     use_features = False
 
     # CLAIRVOYANT
+    """
     clairvoyant_best_seeds = true_g.find_best_seeds(initial_seeds=[], delta=0.1, verbose=False)
     exp_clairvoyant_activations = sum(true_g.monte_carlo_sampling(1000, clairvoyant_best_seeds))
+    """
+    exp_clairvoyant_activations = 42
 
     total_seeds = []
 
     # RUN ALL EXPERIMENTS
-    results = Parallel(n_jobs=-2, verbose=11)(  # all cpu are used with -1 (beware of lag)
+    results = Parallel(n_jobs=-1, verbose=11)(  # all cpu are used with -1 (beware of lag)
         delayed(run_experiment)(approach, repetitions, stimulations, B, delta, use_features, verbose=True) for i in
         range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 
+    """
     # PLOT CUMULATIVE ERROR
     cum_errors = [result["cum_error"] for result in results]
     avg_cum_error = [sum(x) / len(cum_errors) for x in zip(*cum_errors)]
-    plt.plot(results[0]["cum_error"])
+    plt.plot(avg_cum_error)
     plt.title("Cumulative error")
+    # plt.savefig("cum_err.png", dpi=200)
     plt.show()
-
+    """
     # PLOT CUMULATIVE REGRET (with respect to clairvoyant expected activations)
     exp_rewards = []
     for exp in range(len(results)):  # for each experiment compute list of rewards
@@ -88,21 +101,30 @@ if __name__ == '__main__':
     cum_regret = np.cumsum(np.array(exp_clairvoyant_activations) - avg_exp_rewards)
     plt.plot(cum_regret)
     plt.title("Cumulative activations regret")
+    # plt.savefig("cum_reg.png", dpi=200)
     plt.show()
 
     # PLOT AVG N° OF ACTIVATED NODES
     plt.plot(avg_exp_rewards)
     plt.title("Avg. activated nodes")
+    # plt.savefig("avg_activ.png", dpi=200)
     plt.show()
 
-    """
-    # PLOT MOST SELECTED SEEDS
-    seed_popularity = Counter(total_seeds)
-    sorted_seeds = sorted(seed_popularity.items(), key=operator.itemgetter(1))
-    sorted_seeds.reverse()
-    sorted_seeds = sorted_seeds[:25]  # top 25 most selected
-    pos = np.arange(len(sorted_seeds))
-    plt.bar(pos, [x[1] for x in sorted_seeds])
-    plt.xticks(pos, [x[0] for x in sorted_seeds])
-    plt.show()
-    """
+    # SAVE RESULTS IN FILES
+    save_subname = "feats" if use_features else "no_feats"
+    for exp in range(len(results)):
+
+        # save differences
+        differences = results[exp]["prob_errors"]
+        with open("results/ucb1_" + save_subname + "_100nodes_" + str(repetitions) + "repetitions" + str(
+                stimulations) + "stimulations_delta" + str(delta) + "__exp" + str(exp) + "_differences.csv",
+                  "w") as writeFile:
+            writer = csv.writer(writeFile)
+            for data in differences:
+                writer.writerow(data)
+        writeFile.close()
+
+        # save activations
+        save_results(exp_rewards[exp],
+                     "results/ucb1_" + save_subname + "_100nodes_{}repetitions_{}stimulations_delta{}_exp{}_performance.csv".format(
+                         repetitions, stimulations, delta, exp))
