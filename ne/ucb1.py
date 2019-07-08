@@ -63,10 +63,10 @@ if __name__ == '__main__':
     approach = "pessimistic"
     B = 0.2  # exploration coefficient
     repetitions = 10  # should be at least 10
-    stimulations = 100
+    stimulations = 10
     delta = 0.95  # should be 0.2, 0.4, 0.8, 0.95
     num_of_experiments = 20  # should be 20
-    use_features = False
+    use_features = True
 
     # CLAIRVOYANT
     """
