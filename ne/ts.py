@@ -1,11 +1,12 @@
 import graph.graph as g
 import numpy as np
 import csv
+import tqdm
 
 
 def ts_no_edge_experiment(net_size, stimulations, delta, use_features, experiment_index):
     # --- PARAMETERS --- #
-    repetitions = 10
+    repetitions = 5
     save_subname = "feats" if use_features else "no_feats"
 
     if net_size == 100:
@@ -29,7 +30,7 @@ def ts_no_edge_experiment(net_size, stimulations, delta, use_features, experimen
     print("Experiment Index: " + str(experiment_index))
     # Buy seed based on model
     seeds, remainder = true_graph.seeds_at_time_zero(budget)
-    for i in range(repetitions):
+    for i in tqdm.tqdm(range(repetitions)):
         print("Repetition " + str(i))
         for j in range(stimulations):
             # Witness cascade
@@ -67,4 +68,4 @@ def ts_no_edge_experiment(net_size, stimulations, delta, use_features, experimen
 
 # TEST PARAMETERS DOMAIN ---> net_size in [100, 1000], stimulations in [10, 100], delta in [0.2, 0.4, 0.6, 0.95],
 #                             use_features in [True, False]
-ts_no_edge_experiment(net_size=1000, stimulations=10, delta=0.8, use_features=False, experiment_index=0)
+ts_no_edge_experiment(net_size=1000, stimulations=100, delta=0.8, use_features=False, experiment_index=6)
