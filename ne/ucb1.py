@@ -16,8 +16,8 @@ def save_results(values: list, filename: str):
 
 def run_experiment(approach, repetitions, stimulations, B, delta, use_features=False, verbose=True) -> dict:
     # INITIALIZATION
-    true_graph = g.GraphScaleFree.create_graph100()
-    est_graph = g.GraphScaleFree.create_graph100()
+    true_graph = g.GraphScaleFree.create_graph1000()
+    est_graph = g.GraphScaleFree.create_graph1000()
 
     est_graph.init_estimates(estimator="ucb1", approach=approach)
     time = 1
@@ -27,7 +27,7 @@ def run_experiment(approach, repetitions, stimulations, B, delta, use_features=F
     history_of_seeds = []
 
     # Buy seed based on model
-    budget = true_graph.compute_budget(100)
+    budget = true_graph.compute_budget(1000)
     seeds, remainder = true_graph.seeds_at_time_zero(budget)
 
     for i in range(repetitions):
@@ -57,23 +57,23 @@ def run_experiment(approach, repetitions, stimulations, B, delta, use_features=F
 
 
 if __name__ == '__main__':
-    true_g = g.GraphScaleFree.create_graph100()
+    true_g = g.GraphScaleFree.create_graph1000()
 
     # PARAMETERS
     approach = "pessimistic"
     B = 0.2  # exploration coefficient
     repetitions = 10  # should be at least 10
-    stimulations = 100
+    stimulations = 10
     delta = 0.95  # should be 0.2, 0.4, 0.8, 0.95
-    num_of_experiments = 20  # should be 20
-    use_features = True
+    num_of_experiments = 10  # should be 20
+    use_features = False
 
     # CLAIRVOYANT
     """
     clairvoyant_best_seeds = true_g.find_best_seeds(initial_seeds=[], delta=0.1, verbose=False)
     exp_clairvoyant_activations = sum(true_g.monte_carlo_sampling(1000, clairvoyant_best_seeds))
     """
-    exp_clairvoyant_activations = 42
+    exp_clairvoyant_activations = 1000
 
     total_seeds = []
 
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
         # save differences
         differences = results[exp]["prob_errors"]
-        with open("results/ucb1_" + save_subname + "_100nodes_" + str(repetitions) + "repetitions" + str(
+        with open("results/ucb1_" + save_subname + "_1000nodes_" + str(repetitions) + "repetitions" + str(
                 stimulations) + "stimulations_delta" + str(delta) + "__exp" + str(exp) + "_differences.csv",
                   "w") as writeFile:
             writer = csv.writer(writeFile)
@@ -126,5 +126,5 @@ if __name__ == '__main__':
 
         # save activations
         save_results(exp_rewards[exp],
-                     "results/ucb1_" + save_subname + "_100nodes_{}repetitions{}stimulations_delta{}__exp{}_performance.csv".format(
+                     "results/ucb1_" + save_subname + "_1000nodes_{}repetitions{}stimulations_delta{}__exp{}_performance.csv".format(
                          repetitions, stimulations, delta, exp))
