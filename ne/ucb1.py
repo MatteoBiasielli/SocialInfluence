@@ -43,7 +43,8 @@ def run_experiment(approach, repetitions, stimulations, B, delta, use_features=F
         # Update weights (edges probabilities)
         est_graph.update_weights(estimator="ucb1", use_features=use_features, exp_coeff=B, normalize=False)
         # Find the best seeds for next repetition
-        seeds = est_graph.find_best_seeds(initial_seeds=[], delta=delta, budget=budget, verbose=False)
+        seeds = est_graph.find_best_seeds(initial_seeds=[], delta=delta, budget=budget, verbose=False,
+                                          randomized_search=True, randomized_search_number=100)
         # Update performance statistics (seeds selected, probabilities estimation)
         history_of_seeds.append(seeds)
         prob_errors = np.subtract(true_graph.get_edges(), est_graph.get_empirical_means())
@@ -64,8 +65,8 @@ if __name__ == '__main__':
     B = 0.2  # exploration coefficient
     repetitions = 10  # should be at least 10
     stimulations = 10
-    delta = 0.95  # should be 0.2, 0.4, 0.8, 0.95
-    num_of_experiments = 10  # should be 20
+    delta = 0.2  # should be 0.2, 0.4, 0.8, 0.95
+    num_of_experiments = 3  # should be 20
     use_features = False
 
     # CLAIRVOYANT
@@ -78,7 +79,7 @@ if __name__ == '__main__':
     total_seeds = []
 
     # RUN ALL EXPERIMENTS
-    results = Parallel(n_jobs=-1, verbose=11)(  # all cpu are used with -1 (beware of lag)
+    results = Parallel(n_jobs=-2, verbose=11)(  # all cpu are used with -1 (beware of lag)
         delayed(run_experiment)(approach, repetitions, stimulations, B, delta, use_features, verbose=True) for i in
         range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 
