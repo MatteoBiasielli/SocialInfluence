@@ -179,6 +179,7 @@ class GraphScaleFree:
                     if n2 not in n1.adjacency_list:
                         n1.attach(n2, prob=edges_value)
                         n2.attach(n1, prob=edges_value)
+                        self.tot_degree += 2
                     else:
                         n1.adjacency_weights[n1.adjacency_list.index(n2)] = edges_value
                         n2.adjacency_weights[n2.adjacency_list.index(n1)] = edges_value
@@ -306,6 +307,7 @@ class GraphScaleFree:
             for i in range(-node.degree, 0):
                 if node.adjacency_weights[i] < weight_treshold:
                     node.unattach(i, verbose=verbose)
+                    self.tot_degree -= 1
 
     def propagate_cascade(self, use_for_edge_estimator=False):
         result = []

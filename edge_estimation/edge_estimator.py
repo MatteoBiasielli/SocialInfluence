@@ -1,18 +1,21 @@
 from graph.graph import *
 import tqdm
+import matplotlib.pyplot as plt
 
 real_graph = GraphScaleFree.create_graph100(max_n_neighbors=15)
-estimated_graph = GraphScaleFree.create_graph100()
+estimated_graph = GraphScaleFree.create_graph100(max_n_neighbors=15)
 estimated_graph.convert_to_complete(edges_value=1)
 
-
-num_of_cascades = 1000
-num_of_iteration = 15
+num_of_cascades = 200
+num_of_iteration = 50
 time = 0
-cut_treshold = 0.07
+cut_treshold = 0.099
+edges_per_round = []
+edges_per_round.append(9900)
 
 seeds = estimated_graph.get_initial_random_nodes()
 estimated_graph.init_estimates(approach="optimistic")
+result = []
 
 for i in tqdm.tqdm(range(num_of_iteration)):
 
@@ -22,6 +25,8 @@ for i in tqdm.tqdm(range(num_of_iteration)):
 
     for seed in seeds:
         real_graph.nodes[seed].setSeed()
+
+    result.append(seeds)
 
     print("seeds value on the estimated graph:")
     print(sum(estimated_graph.monte_carlo_sampling(1000, seeds)))
@@ -50,17 +55,31 @@ for i in tqdm.tqdm(range(num_of_iteration)):
                 estimated_graph.update_estimate(list_elem, realizations, time)
 
     print("Updating weights...")
-    estimated_graph.update_weights(normalize=False)
+    estimated_graph.update_weights(normalize=False, exp_coeff=0.15)
     print("Done.")
-    if (i + 1) % 2 == 0:
-        print("starting cut procedure:")
-        estimated_graph.execute_cut_procedure(weight_treshold=cut_treshold, verbose=True)
+
+    print("starting cut procedure:")
+    estimated_graph.execute_cut_procedure(weight_treshold=cut_treshold, verbose=False)
+    print("Done.")
+    print("Total degree of the estimated graph: " + str(estimated_graph.tot_degree))
+    edges_per_round.append(estimated_graph.tot_degree)
 
     real_graph.reset_all_seeds()
     print("Estimating new seeds...")
-    seeds = estimated_graph.find_best_seeds(delta=0.8, initial_seeds=[], verbose=False)
+    seeds = estimated_graph.find_best_seeds(delta=0.4, initial_seeds=[], verbose=False)
 
-estimated_graph.plot_degrees()
+file = open("new_seeds_099_6.txt", "w")
+file.write(str(result))
+file.close()
+file = open("edges_per_round_3.txt", "w")
+file.write(str(edges_per_round))
+file.close()
+
+
+
+
+
+
 
 
 
