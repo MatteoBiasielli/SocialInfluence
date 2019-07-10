@@ -57,7 +57,7 @@ def run_experiment(approach, repetitions, stimulations, B, delta, use_features=F
     return {"cum_error": history_cum_error, "prob_errors": history_prob_errors, "seeds": history_of_seeds}
 
 
-if __name__ == '__main__':
+def execute(delta_to_run):
     true_g = g.GraphScaleFree.create_graph1000()
 
     # PARAMETERS
@@ -65,9 +65,9 @@ if __name__ == '__main__':
     B = 0.2  # exploration coefficient
     repetitions = 10  # should be at least 10
     stimulations = 10
-    delta = 0.2  # should be 0.2, 0.4, 0.8, 0.95
+    delta = delta_to_run  # should be 0.2, 0.4, 0.8, 0.95
     num_of_experiments = 3  # should be 20
-    use_features = False
+    use_features = True
 
     # CLAIRVOYANT
     """
@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     # RUN ALL EXPERIMENTS
     results = Parallel(n_jobs=-2, verbose=11)(  # all cpu are used with -1 (beware of lag)
-        delayed(run_experiment)(approach, repetitions, stimulations, B, delta, use_features, verbose=True) for i in
+        delayed(run_experiment)(approach, repetitions, stimulations, B, delta, use_features, verbose=True) for _ in
         range(num_of_experiments))  # returns a list of results (each item is a dictionary of results)
 
     """
@@ -129,3 +129,9 @@ if __name__ == '__main__':
         save_results(exp_rewards[exp],
                      "results/ucb1_" + save_subname + "_1000nodes_{}repetitions{}stimulations_delta{}__exp{}_performance.csv".format(
                          repetitions, stimulations, delta, exp))
+
+
+if __name__ == '__main__':
+    deltas = [0.8, 0.4]
+    for d in deltas:
+        execute(delta_to_run=d)
