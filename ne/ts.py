@@ -4,7 +4,7 @@ import csv
 import tqdm
 
 
-def ts_no_edge_experiment(net_size, stimulations, delta, use_features, experiment_index):
+def ts_no_edge_experiment(net_size, stimulations, delta, use_features, randomized_search, randomized_search_number, experiment_index):
     # --- PARAMETERS --- #
     repetitions = 10
     save_subname = "feats" if use_features else "no_feats"
@@ -42,8 +42,9 @@ def ts_no_edge_experiment(net_size, stimulations, delta, use_features, experimen
         est_graph.update_weights(estimator="ts", use_features=use_features)
 
         # Find the best seeds for next repetition
-        seeds = est_graph.find_best_seeds(initial_seeds=[], budget=budget, delta=delta, randomized_search=True,
-                                          randomized_search_number=100)
+        seeds = est_graph.find_best_seeds(initial_seeds=[], budget=budget, delta=delta,
+                                          randomized_search=randomized_search,
+                                          randomized_search_number=randomized_search_number)
         performance_per_repetition.append(sum(true_graph.monte_carlo_sampling(1000, seeds)))
         differences_per_repetition.append(abs(np.subtract(est_graph.get_edges(), true_graph.get_edges())))
 
@@ -67,8 +68,7 @@ def ts_no_edge_experiment(net_size, stimulations, delta, use_features, experimen
     print(performance_per_repetition)
 
 
-# TEST PARAMETERS DOMAIN ---> net_size in [100, 1000], stimulations in [10, 100], delta in [0.2, 0.4, 0.6, 0.95],
+# TEST PARAMETERS DOMAIN ---> net_size in [100, 1000], stimulations in [10, 100], delta in [0.2, 0.4, 0.8, 0.95],
 #                             use_features in [True, False]
-
-for i in range(1, 3):
-    ts_no_edge_experiment(net_size=1000, stimulations=10, delta=0.8, use_features=False, experiment_index=i)
+ts_no_edge_experiment(net_size=1000, stimulations=10, delta=0.2, use_features=True, randomized_search=True,
+                      randomized_search_number=100, experiment_index=2)
