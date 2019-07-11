@@ -132,6 +132,6 @@ def execute(delta_to_run):
 
 
 if __name__ == '__main__':
-    deltas = [0.8, 0.4]
+    deltas = [0.2]
     for d in deltas:
         execute(delta_to_run=d)
