@@ -93,12 +93,9 @@ def plot_experiment_performance(nodes=100, stimulations=10, delta=0.95, n_exp=20
 
 
 for features in [True, False]:
-    if features:
-        stim_set = [10]
-    else:
-        stim_set = [10, 100]
+    stim_set = [10, 100]
 
     for stimulations in stim_set:
-        for delta in [0.2, 0.4, 0.8, 0.95]:
-            plot_experiment_differences(nodes=100, stimulations=stimulations, delta=delta, n_exp=20, features=features, save=True)
-            plot_experiment_performance(nodes=100, stimulations=stimulations, delta=delta, n_exp=20, features=features, save=True)
+        for delta in [0.4, 0.8, 0.95]:
+            plot_experiment_differences(nodes=1000, stimulations=stimulations, delta=delta, n_exp=3, features=features, save=True)
+            plot_experiment_performance(nodes=1000, stimulations=stimulations, delta=delta, n_exp=3, features=features, save=True)
