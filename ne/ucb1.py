@@ -64,10 +64,10 @@ def execute(delta_to_run):
     approach = "pessimistic"
     B = 0.2  # exploration coefficient
     repetitions = 10  # should be at least 10
-    stimulations = 10
+    stimulations = 100
     delta = delta_to_run  # should be 0.2, 0.4, 0.8, 0.95
     num_of_experiments = 3  # should be 20
-    use_features = True
+    use_features = False
 
     # CLAIRVOYANT
     """

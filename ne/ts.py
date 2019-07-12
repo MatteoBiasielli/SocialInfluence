@@ -70,5 +70,6 @@ def ts_no_edge_experiment(net_size, stimulations, delta, use_features, randomize
 
 # TEST PARAMETERS DOMAIN ---> net_size in [100, 1000], stimulations in [10, 100], delta in [0.2, 0.4, 0.8, 0.95],
 #                             use_features in [True, False]
-ts_no_edge_experiment(net_size=1000, stimulations=10, delta=0.2, use_features=True, randomized_search=True,
-                      randomized_search_number=100, experiment_index=2)
+for i in range(20):
+    ts_no_edge_experiment(net_size=100, stimulations=100, delta=0.2, use_features=True, randomized_search=False,
+                          randomized_search_number=100, experiment_index=i)
