@@ -92,13 +92,60 @@ def plot_experiment_performance(nodes=100, stimulations=10, delta=0.95, n_exp=20
     plt.show()
 
 
-for features in [True, False]:
-    if features:
-        stim_set = [10]
-    else:
-        stim_set = [10, 100]
+def plot_regret(nodes=100, stimulations=100, features=False, save=False):
+    feats_subname = "feats" if features else "no_feats"
+    n_exp = 20 if nodes == 100 else 3
+    plt.title("Average Cumulative Regret\n(" + str(nodes) + "n | " + feats_subname + " | " + str(stimulations)
+              + "s | " + str(n_exp) + "exp)")
+    plt.xlabel("Repetition")
+    plt.ylabel("Average Cumulative Regret")
+    experiments_set_performance = []
+    cum_regret_per_delta = []
 
-    for stimulations in stim_set:
-        for delta in [0.2, 0.4, 0.8, 0.95]:
-            plot_experiment_differences(nodes=100, stimulations=stimulations, delta=delta, n_exp=20, features=features, save=True)
-            plot_experiment_performance(nodes=100, stimulations=stimulations, delta=delta, n_exp=20, features=features, save=True)
+    for delta in [0.2, 0.4, 0.8, 0.95]:
+        for i in range(n_exp):
+            data = read_from_csv("ts_" + feats_subname + "_" + str(nodes) + "nodes_10repetitions" + str(stimulations) +
+                                 "stimulations_delta" + str(delta) + "__exp" + str(i) + "_performance.csv")
+            experiments_set_performance += data
+
+        # Convert to float
+        for i in range(len(experiments_set_performance)):
+            for j in range(len(experiments_set_performance[0])):
+                experiments_set_performance[i][j] = float(experiments_set_performance[i][j])
+
+        # Reorder in chunks per repetition
+        processed_set_performance = []
+        for i in range(len(experiments_set_performance[0])):
+            tmp_repetition = []
+            for j in range(len(experiments_set_performance)):
+                tmp_repetition.append(experiments_set_performance[j][i])
+
+            processed_set_performance.append(tmp_repetition)
+
+        # Compute cumulative regret
+        mean_set_performance = np.mean(processed_set_performance, axis=1)
+        clairvoyant_performance = 45 if nodes == 100 else 330
+        clr_set_performance = np.repeat(clairvoyant_performance, len(mean_set_performance))
+        inst_regret = clr_set_performance - mean_set_performance
+        cum_regret = np.cumsum(inst_regret)
+
+        cum_regret_per_delta.append(cum_regret)
+
+    # Plot results
+    for i in range(len(cum_regret_per_delta)):
+        plt.plot([i for i in range(1, 11)], cum_regret_per_delta[i])
+
+    plt.legend(["0.2", "0.4", "0.8", "0.95"])
+
+    if save:
+        plt.savefig(
+            fname=SAVE_PATH + "plot_regret_" + str(nodes) + "_" + str(stimulations) + "_"
+                  + feats_subname + ".png")
+
+    plt.show()
+
+
+for nodes in [100, 1000]:
+    for features in [True, False]:
+        for stimulations in [10, 100]:
+            plot_regret(nodes=nodes, stimulations=stimulations, features=features, save=True)
